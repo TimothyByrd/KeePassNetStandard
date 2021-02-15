@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\SampleDatabase.kdbx" Link="SampleDatabase.kdbx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KeePassLib\KeePassLib.csproj" />
+    <ProjectReference Include="..\KeePassNetStandard\KeePassNetStandard.csproj" />
+  </ItemGroup>
+
+</Project>
