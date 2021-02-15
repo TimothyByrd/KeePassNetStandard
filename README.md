@@ -1,6 +1,6 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeyPass](https://keepass.info) (v2.47) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.47) to .Net Standard.
 
 #### Table of contents
 [Why?](#h01)<br>
@@ -14,7 +14,7 @@ A port of the KeePassLib code of [KeyPass](https://keepass.info) (v2.47) to .Net
 ## Why?
 <a name="h01" />
 
-I wanted to be able to read passwords from a KeyPass database from a .Net Core app.
+I wanted to be able to read passwords from a KeePass database from a .Net Core app.
 The author/maintainer of KeePass is not interested in moving his codebase in that direction.
 I found [another port](https://github.com/Strangelovian/KeePass2Core) but it was of the code from a few years ago.
 
