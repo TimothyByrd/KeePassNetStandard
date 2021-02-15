@@ -34,6 +34,8 @@ would apply to using the code on the backend of a web site.
 
 I still would avoid putting any of this code into an internal source control, though.
 
+And if anyone wants to sponsor me to reverse engineer and do a fresh write of the code using .Net Standard under the MIT or Apache license, I'm open to a side job. :)
+
 ## How to use it
 <a name="h03" />
 
