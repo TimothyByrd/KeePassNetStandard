@@ -1,6 +1,8 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.47) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.48) to .Net Standard.
+
+(Get code from tag v.2.47 for the v2.47 port.)
 
 #### Table of contents
 [Why?](#h01)<br>
@@ -70,6 +72,8 @@ Some things have been `#if`-ed out, notably UI code down in the core library.
 (The sort of things that are okay in a one-man project, but wouldn't pass code review in a team setting.)
 
 The code I added in KeePassNetStandard.KeePassUtilities has XML documentation to make it easier to use.
+
+Please let me know if something is broken or if there are some other tests I should add to the QuickTest project.
 
 ## Links
 <a name="h05" />
