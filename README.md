@@ -62,6 +62,8 @@ Otherwise, the functionality of KeePassLib is available.
 ## How it was ported, what's missing?
 <a name="h04" />
 
+In general, the changes are minimal to make it easier to update as the main KeePass source changes.
+
 I followed the same methods as Strangelovian in [KeePass2Core](https://github.com/Strangelovian/KeePass2Core).
 All code changes can be found by searching for `NETSTANDARD2_0`.
 Also see KeePassLib.csproj for files removed from compilation.
@@ -77,7 +79,7 @@ Please let me know if something is broken or if there are some other tests I sho
 <a name="h05" />
 
 - Thanks to [KeePass](https://keepass.info) for making something useful enough that people want to use it beyond your vision.
-- Thanks to Strangelovian for showing is was possible to port in [KeePass2Core](https://github.com/Strangelovian/KeePass2Core).
+- Thanks to Strangelovian for showing it was possible to port in [KeePass2Core](https://github.com/Strangelovian/KeePass2Core).
 
 ## Donation
 <a name="h06" />
