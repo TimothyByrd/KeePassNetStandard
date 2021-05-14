@@ -1,8 +1,8 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.48) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.48.1) to .Net Standard.
 
-(Get code from tag v.2.47 for the v2.47 port.)
+Tags for previous ports: v2.47, v2.48
 
 #### Table of contents
 [Why?](#h01)<br>
@@ -11,7 +11,6 @@ A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.48) to .Net
 [How it was ported, what's missing?](#h04)<br>
 [Links](#h05)<br>
 [Donation](#h06)<br>
-
 
 ## Why?
 <a name="h01" />
@@ -45,7 +44,6 @@ Get the source, build the KeePassNetStandard and KeePassLib project and use in y
 
 If you just want to read passwords from a password database secured by a master password,
 I recommend using the methods in KeePassNetStandard.KeePassUtilities:
-
 
 ```
 using KeePassNetStandard;
