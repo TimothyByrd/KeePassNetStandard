@@ -439,6 +439,8 @@ namespace KeePassLib.Native
 #endif
 		}
 
+#if KeePassUAP // NETSTANDARD2_0
+#else
 		private static KeyValuePair<IntPtr, IntPtr> PrepareArrays256(byte[] pBuf256,
 			byte[] pKey256)
 		{
@@ -477,6 +479,7 @@ namespace KeePassLib.Native
 			if(kvpPointers.Value != IntPtr.Zero)
 				Marshal.FreeHGlobal(kvpPointers.Value);
 		}
+#endif
 
 		// internal static Type GetUwpType(string strType)
 		// {
