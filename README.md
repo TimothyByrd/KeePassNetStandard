@@ -1,8 +1,8 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.48.1) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.49) to .Net Standard.
 
-Tags for previous ports: v2.47, v2.48
+Tags for previous versions of the port: v2.47, v2.48, v2.48.1
 
 #### Table of contents
 [Why?](#h01)<br>
@@ -70,6 +70,8 @@ Also see KeePassLib.csproj for files removed from compilation.
 
 Some things have been `#if`-ed out, notably UI code down in the core library. 
 (The sort of things that are okay in a one-man project, but wouldn't pass code review in a team setting.)
+
+Note that the assembly in this project is not signed.
 
 The code I added in KeePassNetStandard.KeePassUtilities has XML documentation to make it easier to use.
 
