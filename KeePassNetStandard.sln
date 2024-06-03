@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31005.135
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.34929.205
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeePassNetStandard", "KeePassNetStandard\KeePassNetStandard.csproj", "{2DE7B04B-0D62-46B0-891C-80976FD28EA7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeePassLib", "KeePassLib\KeePassLib.csproj", "{1D71AD53-1348-4709-B90F-6C711418C2E6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickTest", "QuickTest\QuickTest.csproj", "{C833AD77-CBF2-4079-BD47-7163960792FE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleDumpDatabase", "SampleDumpDatabase\SampleDumpDatabase.csproj", "{12497442-D957-437F-8DE8-53DA347D2532}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B6CCB302-865B-44CC-8E87-45A82980CD53}"
 	ProjectSection(SolutionItems) = preProject
@@ -32,6 +34,10 @@ Global
 		{C833AD77-CBF2-4079-BD47-7163960792FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C833AD77-CBF2-4079-BD47-7163960792FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C833AD77-CBF2-4079-BD47-7163960792FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12497442-D957-437F-8DE8-53DA347D2532}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12497442-D957-437F-8DE8-53DA347D2532}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12497442-D957-437F-8DE8-53DA347D2532}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12497442-D957-437F-8DE8-53DA347D2532}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
