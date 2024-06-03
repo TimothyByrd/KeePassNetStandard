@@ -148,11 +148,11 @@ namespace SampleDumpDatabase
             var user = entry.Strings.ReadSafe("UserName");
             var password = entry.Strings.ReadSafe("Password");
             var url = entry.Strings.ReadSafe("URL");
-            var notes = entry.Strings.ReadSafe("Notes");
+            var notes = entry.Strings.ReadSafe("Notes")?.Trim();
             sb.AppendLine($"{title}");
-            sb.AppendLine($"user: '{user}', pass: '{password}'");
+            sb.AppendLine($"user: {user}, pass: {password}");
             if (!string.IsNullOrWhiteSpace(url))
-                sb.AppendLine($"url: '{url}'");
+                sb.AppendLine($"url: {url}");
             if (!string.IsNullOrWhiteSpace(notes))
                 sb.AppendLine($"{notes.Trim()}");
         }
@@ -175,16 +175,54 @@ namespace SampleDumpDatabase
 
                 AppendParagraph(body, $"Passwords {now}");
 
-                var lines = sb.ToString().Split('\n');
+                var lines = sb.ToString().Trim().Split('\n');
                 foreach (var line in lines)
                     AppendParagraph(body, line);
+
+                var sectionProps = new SectionProperties();
+                mainPart.Document.Body.Append(sectionProps);
+
+                var pageMargin = new PageMargin
+                {
+                    Top = 720, // 1/20ths of a point so 720 = 1/2 inch
+                    Right = (UInt32Value)720U, 
+                    Bottom = 720, 
+                    Left = (UInt32Value)720U, 
+                    Header = (UInt32Value)360U, 
+                    Footer = (UInt32Value)360U, 
+                    Gutter = (UInt32Value)0U 
+                };
+                sectionProps.Append(pageMargin);
+
+                var paragraphColumns = new Columns
+                {
+                    EqualWidth = true,
+                    ColumnCount = 2
+                };
+                sectionProps.Append(paragraphColumns);
             }
 
             static void AppendParagraph(Body body, string str)
             {
                 Paragraph para = body.AppendChild(new Paragraph());
+
+                var spacing = new SpacingBetweenLines() { Line = "240", LineRule = LineSpacingRuleValues.Auto, Before = "0", After = "0" };
+                var paragraphProperties = new ParagraphProperties();
+                paragraphProperties.Append(spacing);
+                para.Append(paragraphProperties);
+
                 Run run = para.AppendChild(new Run());
+
+                var runProp = new RunProperties();
+                var runFont = new RunFonts { Ascii = "Arial" };
+                var size = new FontSize { Val = new StringValue("14") }; // size in half-points
+                runProp.Append(runFont);
+                runProp.Append(size);
+                run.PrependChild<RunProperties>(runProp);
+
+                if (string.IsNullOrEmpty(str)) str = ".";
                 run.AppendChild(new Text(str));
+
             }
         }
     }
