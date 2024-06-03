@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ namespace KeePassLib.Collections
 {
 	internal sealed class ProtectedBinarySet : IEnumerable<KeyValuePair<int, ProtectedBinary>>
 	{
-		private Dictionary<int, ProtectedBinary> m_d =
+		private readonly Dictionary<int, ProtectedBinary> m_d =
 			new Dictionary<int, ProtectedBinary>();
 
 		private readonly bool m_bDedupAdd;

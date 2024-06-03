@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,17 +28,17 @@ namespace KeePassLib.Cryptography
 {
 	public static class PopularPasswords
 	{
-		private static Dictionary<int, Dictionary<char[], bool>> m_dicts =
+		private static readonly Dictionary<int, Dictionary<char[], bool>> g_dicts =
 			new Dictionary<int, Dictionary<char[], bool>>();
 
 		internal static int MaxLength
 		{
 			get
 			{
-				Debug.Assert(m_dicts.Count > 0); // Should be initialized
+				Debug.Assert(g_dicts.Count > 0); // Should be initialized
 
 				int iMaxLen = 0;
-				foreach(int iLen in m_dicts.Keys)
+				foreach(int iLen in g_dicts.Keys)
 				{
 					if(iLen > iMaxLen) iMaxLen = iLen;
 				}
@@ -50,7 +50,7 @@ namespace KeePassLib.Cryptography
 		internal static bool ContainsLength(int nLength)
 		{
 			Dictionary<char[], bool> dDummy;
-			return m_dicts.TryGetValue(nLength, out dDummy);
+			return g_dicts.TryGetValue(nLength, out dDummy);
 		}
 
 		public static bool IsPopularPassword(char[] vPassword)
@@ -77,10 +77,10 @@ namespace KeePassLib.Cryptography
 
 		private static bool IsPopularPasswordPriv(char[] vPassword, out ulong uDictSize)
 		{
-			Debug.Assert(m_dicts.Count > 0); // Should be initialized with data
+			Debug.Assert(g_dicts.Count > 0); // Should be initialized with data
 
 			Dictionary<char[], bool> d;
-			if(!m_dicts.TryGetValue(vPassword.Length, out d))
+			if(!g_dicts.TryGetValue(vPassword.Length, out d))
 			{
 				uDictSize = 0;
 				return false;
@@ -114,10 +114,10 @@ namespace KeePassLib.Cryptography
 							sb.CopyTo(0, vWord, 0, cc);
 
 							Dictionary<char[], bool> d;
-							if(!m_dicts.TryGetValue(cc, out d))
+							if(!g_dicts.TryGetValue(cc, out d))
 							{
 								d = new Dictionary<char[], bool>(MemUtil.ArrayHelperExOfChar);
-								m_dicts[cc] = d;
+								g_dicts[cc] = d;
 							}
 
 							d[vWord] = true;

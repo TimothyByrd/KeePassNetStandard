@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -125,7 +125,7 @@ namespace KeePassLib.Cryptography
 		private sealed class EntropyEncoder
 		{
 			private readonly string m_strAlph;
-			private Dictionary<char, ulong> m_dHisto = new Dictionary<char, ulong>();
+			private readonly Dictionary<char, ulong> m_dHisto = new Dictionary<char, ulong>();
 			private readonly ulong m_uBaseWeight;
 			private readonly ulong m_uCharWeight;
 			private readonly ulong m_uOccExclThreshold;
@@ -189,7 +189,7 @@ namespace KeePassLib.Cryptography
 
 		private sealed class MultiEntropyEncoder
 		{
-			private Dictionary<char, EntropyEncoder> m_dEncs =
+			private readonly Dictionary<char, EntropyEncoder> m_dEncs =
 				new Dictionary<char, EntropyEncoder>();
 
 			public MultiEntropyEncoder()
@@ -292,25 +292,20 @@ namespace KeePassLib.Cryptography
 				{
 					string strSpecial = PwCharSet.PrintableAsciiSpecial;
 					if(strSpecial.IndexOf(' ') >= 0) { Debug.Assert(false); }
-					else strSpecial = strSpecial + " ";
+					else strSpecial += " ";
 
 					int nSp = strSpecial.Length;
 					int nL1S = PwCharSet.Latin1S.Length;
 
-					m_lCharTypes = new List<QeCharType>();
-
-					m_lCharTypes.Add(new QeCharType(PatternID.LowerAlpha,
-						PwCharSet.LowerCase, true));
-					m_lCharTypes.Add(new QeCharType(PatternID.UpperAlpha,
-						PwCharSet.UpperCase, true));
-					m_lCharTypes.Add(new QeCharType(PatternID.Digit,
-						PwCharSet.Digits, true));
-					m_lCharTypes.Add(new QeCharType(PatternID.Special,
-						strSpecial, false));
-					m_lCharTypes.Add(new QeCharType(PatternID.Latin1S,
-						PwCharSet.Latin1S, false));
-					m_lCharTypes.Add(new QeCharType(PatternID.Other,
-						0x10000 - (2 * 26) - 10 - nSp - nL1S));
+					m_lCharTypes = new List<QeCharType>()
+					{
+						new QeCharType(PatternID.LowerAlpha, PwCharSet.LowerCase, true),
+						new QeCharType(PatternID.UpperAlpha, PwCharSet.UpperCase, true),
+						new QeCharType(PatternID.Digit, PwCharSet.Digits, true),
+						new QeCharType(PatternID.Special, strSpecial, false),
+						new QeCharType(PatternID.Latin1S, PwCharSet.Latin1S, false),
+						new QeCharType(PatternID.Other, 0x10000 - (2 * 26) - 10 - nSp - nL1S)
+					};
 				}
 			}
 		}

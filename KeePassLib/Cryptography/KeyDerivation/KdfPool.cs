@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ namespace KeePassLib.Cryptography.KeyDerivation
 {
 	public static class KdfPool
 	{
-		private static List<KdfEngine> g_l = new List<KdfEngine>();
+		private static readonly List<KdfEngine> g_l = new List<KdfEngine>();
 
 		public static IEnumerable<KdfEngine> Engines
 		{

@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,9 +22,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
+using KeePassLib.Utility;
+
 namespace KeePassLib.Cryptography.PasswordGenerator
 {
-	public sealed class PwCharSet
+	public sealed class PwCharSet : IEquatable<PwCharSet>
 	{
 		public static readonly string UpperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		public static readonly string LowerCase = "abcdefghijklmnopqrstuvwxyz";
@@ -35,7 +37,7 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 		public static readonly string UpperVowels = "AEIOU";
 		public static readonly string LowerVowels = "aeiou";
 
-		public static readonly string Punctuation = @",.;:";
+		public static readonly string Punctuation = ",.;:";
 		public static readonly string Brackets = @"[]{}()<>";
 
 		public static readonly string Special = "!\"#$%&'*+,./:;=?@\\^`|~";
@@ -44,7 +46,7 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 		public static readonly string UpperHex = "0123456789ABCDEF";
 		public static readonly string LowerHex = "0123456789abcdef";
 
-		public static readonly string LookAlike = @"O0l1I|";
+		public static readonly string LookAlike = "O0Il1|";
 
 		/// <summary>
 		/// Latin-1 Supplement except U+00A0 (NBSP) and U+00AD (SHY).
@@ -63,17 +65,15 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 			"\u00F0\u00F1\u00F2\u00F3\u00F4\u00F5\u00F6\u00F7" +
 			"\u00F8\u00F9\u00FA\u00FB\u00FC\u00FD\u00FE\u00FF";
 
-		internal static readonly string MenuAccels = PwCharSet.LowerCase + PwCharSet.Digits;
+		// internal static readonly string MenuAccels = PwCharSet.LowerCase + PwCharSet.Digits;
 
 		[Obsolete]
 		public static string SpecialChars { get { return PwCharSet.Special; } }
 		[Obsolete]
 		public static string HighAnsiChars { get { return PwCharSet.Latin1S; } }
 
-		private const int CharTabSize = 0x10000 / 8;
-
-		private List<char> m_lChars = new List<char>();
-		private byte[] m_vTab = new byte[CharTabSize];
+		private readonly List<char> m_lChars = new List<char>();
+		private readonly byte[] m_vTab = new byte[0x10000 / 8];
 
 		/// <summary>
 		/// Create a new, empty character set.
@@ -111,6 +111,26 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 
 				return m_lChars[(int)uPos];
 			}
+		}
+
+		public bool Equals(PwCharSet other)
+		{
+			if(object.ReferenceEquals(other, this)) return true;
+			if(object.ReferenceEquals(other, null)) return false;
+
+			if(m_lChars.Count != other.m_lChars.Count) return false;
+
+			return MemUtil.ArraysEqual(m_vTab, other.m_vTab);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return Equals(obj as PwCharSet);
+		}
+
+		public override int GetHashCode()
+		{
+			return (int)MemUtil.Hash32(m_vTab, 0, m_vTab.Length);
 		}
 
 		/// <summary>

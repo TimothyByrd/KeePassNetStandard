@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -50,8 +50,8 @@ namespace KeePassLib.Utility
 			{
 				if(g_vDirSepChars == null)
 				{
-					List<char> l = new List<char>();
-					l.Add('/'); // For URLs, also on Windows
+					// '/' for URLs, also on Windows
+					List<char> l = new List<char> { '/' };
 
 					// On Unix-like systems, '\\' is not a separator
 					if(!NativeLib.IsUnix()) l.Add('\\');
@@ -109,8 +109,7 @@ namespace KeePassLib.Utility
 		/// the returned string is <c>My File.kdb</c>.
 		/// </summary>
 		/// <param name="strPath">Full path of a file.</param>
-		/// <returns>File name of the specified file. The return value is
-		/// an empty string (<c>""</c>) if the input parameter is <c>null</c>.</returns>
+		/// <returns>File name of the specified file.</returns>
 		public static string GetFileName(string strPath)
 		{
 			Debug.Assert(strPath != null); if(strPath == null) throw new ArgumentNullException("strPath");
@@ -873,7 +872,7 @@ namespace KeePassLib.Utility
 			if(strText == null) { Debug.Assert(false); return string.Empty; }
 
 			string[] v = vParams;
-			if(v == null) { Debug.Assert(false); v = new string[0]; }
+			if(v == null) { Debug.Assert(false); v = MemUtil.EmptyArray<string>(); }
 			if(bEncParamsToArgs)
 			{
 				for(int i = 0; i < v.Length; ++i)

@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -85,12 +85,13 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 
 			// Mix in additional entropy
 			Debug.Assert(pbKey.Length >= 64);
-			if((pbAdditionalEntropy != null) && (pbAdditionalEntropy.Length > 0))
+			if((pbAdditionalEntropy != null) && (pbAdditionalEntropy.Length != 0))
 			{
 				using(SHA512Managed h = new SHA512Managed())
 				{
 					byte[] pbHash = h.ComputeHash(pbAdditionalEntropy);
 					MemUtil.XorArray(pbHash, 0, pbKey, 0, pbHash.Length);
+					MemUtil.ZeroByteArray(pbHash);
 				}
 			}
 
@@ -208,9 +209,8 @@ namespace KeePassLib.Cryptography.PasswordGenerator
 
 		internal static string ErrorToString(Exception ex, bool bHeader)
 		{
-			string str = KLRes.UnknownError;
-			if((ex != null) && !string.IsNullOrEmpty(ex.Message))
-				str = ex.Message;
+			string str = ((ex == null) ? KLRes.UnknownError :
+				StrUtil.FormatException(ex, null));
 
 			if(bHeader)
 				str = KLRes.PwGenFailed + MessageService.NewParagraph + str;

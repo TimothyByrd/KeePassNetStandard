@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,8 +41,14 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			return new KdfParameters(this.Uuid);
 		}
 
+		public virtual bool AreParametersWeak(KdfParameters p)
+		{
+			Debug.Assert(p != null);
+			return false;
+		}
+
 		/// <summary>
-		/// Generate random seeds and store them in <paramref name="p" />.
+		/// Generate random seeds/salts and store them in <paramref name="p" />.
 		/// </summary>
 		public virtual void Randomize(KdfParameters p)
 		{
@@ -137,6 +143,24 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			}
 
 			p.SetUInt64(strName, uLow);
+		}
+
+		internal ulong Test(KdfParameters p)
+		{
+			if(p == null) throw new ArgumentNullException("p");
+
+			Random r = CryptoRandom.NewWeakRandom();
+
+			byte[] pbMsg = new byte[32];
+			r.NextBytes(pbMsg);
+
+			Randomize(p);
+
+			Stopwatch sw = Stopwatch.StartNew();
+			Transform(pbMsg, p);
+			sw.Stop();
+
+			return (ulong)sw.ElapsedMilliseconds;
 		}
 	}
 }

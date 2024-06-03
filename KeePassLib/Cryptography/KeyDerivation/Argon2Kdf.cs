@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+
+using KeePassLib.Native;
+using KeePassLib.Utility;
 
 namespace KeePassLib.Cryptography.KeyDerivation
 {
@@ -52,14 +55,14 @@ namespace KeePassLib.Cryptography.KeyDerivation
 		private const uint MaxVersion = 0x13;
 
 		private const int MinSalt = 8;
-		private const int MaxSalt = int.MaxValue; // .NET limit; 2^32 - 1 in spec.
+		private const int MaxSalt = 0x3FFFFFFF; // 2^32 - 1 in spec.
 
 		internal const ulong MinIterations = 1;
 		internal const ulong MaxIterations = uint.MaxValue;
 
 		internal const ulong MinMemory = 1024 * 8; // For parallelism = 1
 		// internal const ulong MaxMemory = (ulong)uint.MaxValue * 1024UL; // Spec.
-		internal const ulong MaxMemory = int.MaxValue; // .NET limit
+		internal const ulong MaxMemory = int.MaxValue;
 
 		internal const uint MinParallelism = 1;
 		internal const uint MaxParallelism = (1 << 24) - 1;
@@ -105,6 +108,21 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			return p;
 		}
 
+		public override bool AreParametersWeak(KdfParameters p)
+		{
+			if(p == null) { Debug.Assert(false); return false; }
+
+			ulong uIt = p.GetUInt64(ParamIterations, 0);
+			if(uIt < MinIterations) { Debug.Assert(false); return false; }
+			ulong uMem = p.GetUInt64(ParamMemory, 0);
+			if(uMem < MinMemory) { Debug.Assert(false); return false; }
+
+			const ulong wDefault = checked(DefaultIterations * DefaultMemory);
+			try { return (checked(uIt * uMem) < wDefault); }
+			catch(Exception) { Debug.Assert(false); }
+			return false;
+		}
+
 		public override void Randomize(KdfParameters p)
 		{
 			if(p == null) { Debug.Assert(false); return; }
@@ -144,10 +162,19 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			byte[] pbSecretKey = p.GetByteArray(ParamSecretKey);
 			byte[] pbAssocData = p.GetByteArray(ParamAssocData);
 
-			byte[] pbRet = Argon2Transform(pbMsg, pbSalt, uPar, uMem,
-				uIt, 32, v, pbSecretKey, pbAssocData);
+			const int cbOut = 32;
 
-			if(uMem > (100UL * 1024UL * 1024UL)) GC.Collect();
+			byte[] pbRet = Argon2Native(pbMsg, pbSalt, uPar, uMem,
+				uIt, cbOut, v, pbSecretKey, pbAssocData);
+
+			if(pbRet == null)
+			{
+				pbRet = Argon2Transform(pbMsg, pbSalt, uPar, uMem,
+					uIt, cbOut, v, pbSecretKey, pbAssocData);
+
+				if(uMem > (100UL * 1024UL * 1024UL)) GC.Collect();
+			}
+
 			return pbRet;
 		}
 
@@ -159,6 +186,85 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			MaximizeParamUInt64(p, ParamIterations, MinIterations,
 				MaxIterations, uMilliseconds, true);
 			return p;
+		}
+
+		private byte[] Argon2Native(byte[] pbMsg, byte[] pbSalt, uint uParallel,
+			ulong uMem, ulong uIt, int cbOut, uint uVersion, byte[] pbSecretKey,
+			byte[] pbAssocData)
+		{
+			NativeBufferEx nbMsg = null, nbSalt = null, nbHash = null;
+			try
+			{
+				// Secret key and assoc. data are unsupported by 'argon2_hash'
+				if((pbSecretKey != null) && (pbSecretKey.Length != 0)) return null;
+				if((pbAssocData != null) && (pbAssocData.Length != 0)) return null;
+
+				int iType;
+				if(m_t == Argon2Type.D) iType = 0;
+				else if(m_t == Argon2Type.ID) iType = 2;
+				else { Debug.Assert(false); return null; }
+
+				nbMsg = new NativeBufferEx(pbMsg, true, true, 1);
+				IntPtr cbMsg = new IntPtr(pbMsg.Length);
+				nbSalt = new NativeBufferEx(pbSalt, true, true, 1);
+				IntPtr cbSalt = new IntPtr(pbSalt.Length);
+				uint m = checked((uint)(uMem / NbBlockSize));
+				uint t = checked((uint)uIt);
+				nbHash = new NativeBufferEx(cbOut, true, true, true, 1);
+				IntPtr cbHash = new IntPtr(cbOut);
+
+				bool b = false;
+				if(NativeLib.IsUnix())
+				{
+					if(!MonoWorkarounds.IsRequired(100004)) return null;
+
+					try
+					{
+						b = (NativeMethods.argon2_hash_u0(t, m, uParallel,
+							nbMsg.Data, cbMsg, nbSalt.Data, cbSalt,
+							nbHash.Data, cbHash, IntPtr.Zero, IntPtr.Zero,
+							iType, uVersion) == 0);
+					}
+					catch(DllNotFoundException) { }
+					catch(Exception) { Debug.Assert(false); }
+
+					if(!b)
+						b = (NativeMethods.argon2_hash_u1(t, m, uParallel,
+							nbMsg.Data, cbMsg, nbSalt.Data, cbSalt,
+							nbHash.Data, cbHash, IntPtr.Zero, IntPtr.Zero,
+							iType, uVersion) == 0);
+				}
+				else // Windows
+				{
+					if(IntPtr.Size == 4)
+						b = (NativeMethods.argon2_hash_w32(t, m, uParallel,
+							nbMsg.Data, cbMsg, nbSalt.Data, cbSalt,
+							nbHash.Data, cbHash, IntPtr.Zero, IntPtr.Zero,
+							iType, uVersion) == 0);
+					else
+						b = (NativeMethods.argon2_hash_w64(t, m, uParallel,
+							nbMsg.Data, cbMsg, nbSalt.Data, cbSalt,
+							nbHash.Data, cbHash, IntPtr.Zero, IntPtr.Zero,
+							iType, uVersion) == 0);
+				}
+
+				if(b)
+				{
+					byte[] pbHash = new byte[cbOut];
+					nbHash.CopyTo(pbHash);
+					return pbHash;
+				}
+			}
+			catch(DllNotFoundException) { }
+			catch(Exception) { Debug.Assert(false); }
+			finally
+			{
+				if(nbMsg != null) nbMsg.Dispose();
+				if(nbSalt != null) nbSalt.Dispose();
+				if(nbHash != null) nbHash.Dispose();
+			}
+
+			return null;
 		}
 	}
 }

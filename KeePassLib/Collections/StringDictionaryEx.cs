@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Text;
 
 using KeePassLib.Interfaces;
+using KeePassLib.Utility;
 
 #if KeePassLibSD
 using KeePassLibSD;
@@ -34,7 +35,7 @@ namespace KeePassLib.Collections
 	public sealed class StringDictionaryEx : IDeepCloneable<StringDictionaryEx>,
 		IEnumerable<KeyValuePair<string, string>>, IEquatable<StringDictionaryEx>
 	{
-		private SortedDictionary<string, string> m_d =
+		private readonly SortedDictionary<string, string> m_d =
 			new SortedDictionary<string, string>();
 
 		// Non-null if and only if last mod. times should be remembered
@@ -78,9 +79,23 @@ namespace KeePassLib.Collections
 			return sdNew;
 		}
 
+		public override int GetHashCode()
+		{
+			int h = ((m_dLastMod != null) ? 0x208F391C : 0);
+			foreach(KeyValuePair<string, string> kvp in m_d)
+				h += kvp.Key.GetHashCode() + kvp.Value.GetHashCode();
+			return h;
+		}
+
+		public override bool Equals(object obj)
+		{
+			return Equals(obj as StringDictionaryEx);
+		}
+
 		public bool Equals(StringDictionaryEx sdOther)
 		{
-			if(sdOther == null) { Debug.Assert(false); return false; }
+			if(object.ReferenceEquals(sdOther, this)) return true;
+			if(object.ReferenceEquals(sdOther, null)) { Debug.Assert(false); return false; }
 
 			if(m_d.Count != sdOther.m_d.Count) return false;
 
@@ -100,7 +115,7 @@ namespace KeePassLib.Collections
 				{
 					DateTime? odt = GetLastModificationTime(kvp.Key);
 					if(!odt.HasValue) return false;
-					if(odt.Value != kvp.Value) return false;
+					if(!TimeUtil.EqualsFloor(odt.Value, kvp.Value)) return false;
 				}
 			}
 

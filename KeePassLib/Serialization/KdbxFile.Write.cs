@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,12 +24,6 @@ using System.Globalization;
 using System.IO;
 using System.Security;
 using System.Text;
-using System.Xml;
-
-#if !KeePassUAP
-using System.Drawing;
-using System.Security.Cryptography;
-#endif
 
 #if KeePassLibSD
 using KeePassLibSD;
@@ -90,7 +84,6 @@ namespace KeePassLib.Serialization
 			m_xmlWriter = null;
 
 			PwGroup pgRoot = (pgDataSource ?? m_pwDatabase.RootGroup);
-			UTF8Encoding encNoBom = StrUtil.Utf8;
 			CryptoRandom cr = CryptoRandom.Instance;
 			byte[] pbCipherKey = null;
 			byte[] pbHmacKey64 = null;
@@ -98,8 +91,7 @@ namespace KeePassLib.Serialization
 			m_pbsBinaries = new ProtectedBinarySet(true);
 			m_pbsBinaries.AddFrom(pgRoot);
 
-			List<Stream> lStreams = new List<Stream>();
-			lStreams.Add(sSaveTo);
+			List<Stream> lStreams = new List<Stream> { sSaveTo };
 
 			HashingStreamEx sHashing = new HashingStreamEx(sSaveTo, true, null);
 			lStreams.Add(sHashing);
@@ -249,11 +241,8 @@ namespace KeePassLib.Serialization
 
 				WriteHeaderField(ms, KdbxHeaderFieldID.CipherID,
 					m_pwDatabase.DataCipherUuid.UuidBytes);
-
-				int nCprID = (int)m_pwDatabase.Compression;
 				WriteHeaderField(ms, KdbxHeaderFieldID.CompressionFlags,
-					MemUtil.UInt32ToBytes((uint)nCprID));
-
+					MemUtil.UInt32ToBytes((uint)m_pwDatabase.Compression));
 				WriteHeaderField(ms, KdbxHeaderFieldID.MasterSeed, m_pbMasterSeed);
 
 				if(m_uFileVersion < FileVersion32_4)
@@ -277,13 +266,10 @@ namespace KeePassLib.Serialization
 				{
 					WriteHeaderField(ms, KdbxHeaderFieldID.InnerRandomStreamKey,
 						m_pbInnerRandomStreamKey);
-
 					WriteHeaderField(ms, KdbxHeaderFieldID.StreamStartBytes,
 						m_pbStreamStartBytes);
-
-					int nIrsID = (int)m_craInnerRandomStream;
 					WriteHeaderField(ms, KdbxHeaderFieldID.InnerRandomStreamID,
-						MemUtil.Int32ToBytes(nIrsID));
+						MemUtil.Int32ToBytes((int)m_craInnerRandomStream));
 				}
 
 				// Write public custom data only when there is at least one item,
@@ -328,10 +314,8 @@ namespace KeePassLib.Serialization
 
 		private void WriteInnerHeader(Stream s)
 		{
-			int nIrsID = (int)m_craInnerRandomStream;
 			WriteInnerHeaderField(s, KdbxInnerHeaderFieldID.InnerRandomStreamID,
-				MemUtil.Int32ToBytes(nIrsID), null);
-
+				MemUtil.Int32ToBytes((int)m_craInnerRandomStream), null);
 			WriteInnerHeaderField(s, KdbxInnerHeaderFieldID.InnerRandomStreamKey,
 				m_pbInnerRandomStreamKey, null);
 
@@ -514,8 +498,8 @@ namespace KeePassLib.Serialization
 			WriteList(ElemTimes, pg);
 			WriteObject(ElemIsExpanded, pg.IsExpanded);
 			WriteObject(ElemGroupDefaultAutoTypeSeq, pg.DefaultAutoTypeSequence, true);
-			WriteObject(ElemEnableAutoType, StrUtil.BoolToStringEx(pg.EnableAutoType), false);
-			WriteObject(ElemEnableSearching, StrUtil.BoolToStringEx(pg.EnableSearching), false);
+			WriteObject(ElemEnableAutoType, pg.EnableAutoType);
+			WriteObject(ElemEnableSearching, pg.EnableSearching);
 			WriteObject(ElemLastTopVisibleEntry, pg.LastTopVisibleEntry);
 
 			if(m_uFileVersion >= FileVersion32_4_1)
@@ -742,9 +726,13 @@ namespace KeePassLib.Serialization
 
 		private void WriteObject(string name, bool value)
 		{
-			Debug.Assert(name != null);
+			WriteObject(name, (value ? ValTrue : ValFalse), false);
+		}
 
-			WriteObject(name, value ? ValTrue : ValFalse, false);
+		private void WriteObject(string name, bool? value)
+		{
+			if(!value.HasValue) WriteObject(name, ValNull, false);
+			else WriteObject(name, (value.Value ? ValTrue : ValFalse), false);
 		}
 
 		private void WriteObject(string name, PwUuid value)

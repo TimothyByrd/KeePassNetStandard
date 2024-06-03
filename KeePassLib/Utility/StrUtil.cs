@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 #if !KeePassUAP
@@ -33,7 +34,9 @@ using System.Security.Cryptography;
 using KeePassLib.Collections;
 using KeePassLib.Cryptography;
 using KeePassLib.Cryptography.PasswordGenerator;
+using KeePassLib.Delegates;
 using KeePassLib.Native;
+using KeePassLib.Resources;
 using KeePassLib.Security;
 
 namespace KeePassLib.Utility
@@ -350,12 +353,7 @@ namespace KeePassLib.Utility
 		/// <returns>String, HTML-encoded.</returns>
 		public static string StringToHtml(string str)
 		{
-			return StringToHtml(str, false);
-		}
-
-		internal static string StringToHtml(string str, bool bNbsp)
-		{
-			Debug.Assert(str != null); if(str == null) throw new ArgumentNullException("str");
+			if(str == null) { Debug.Assert(false); return string.Empty; }
 
 			str = str.Replace(@"&", @"&amp;"); // Must be first
 			str = str.Replace(@"<", @"&lt;");
@@ -363,7 +361,7 @@ namespace KeePassLib.Utility
 			str = str.Replace("\"", @"&quot;");
 			str = str.Replace("\'", @"&#39;");
 
-			if(bNbsp) str = str.Replace(" ", @"&nbsp;"); // Before <br />
+			// if(bNbsp) str = str.Replace(" ", @"&nbsp;"); // Before <br />
 
 			str = NormalizeNewLines(str, false);
 			str = str.Replace("\n", @"<br />" + MessageService.NewLine);
@@ -373,13 +371,13 @@ namespace KeePassLib.Utility
 
 		public static string XmlToString(string str)
 		{
-			Debug.Assert(str != null); if(str == null) throw new ArgumentNullException("str");
+			if(str == null) { Debug.Assert(false); return string.Empty; }
 
-			str = str.Replace(@"&amp;", @"&");
 			str = str.Replace(@"&lt;", @"<");
 			str = str.Replace(@"&gt;", @">");
 			str = str.Replace(@"&quot;", "\"");
 			str = str.Replace(@"&#39;", "\'");
+			str = str.Replace(@"&amp;", @"&"); // Must be last
 
 			return str;
 		}
@@ -387,9 +385,9 @@ namespace KeePassLib.Utility
 		public static string ReplaceCaseInsensitive(string strString, string strFind,
 			string strNew)
 		{
-			Debug.Assert(strString != null); if(strString == null) return strString;
-			Debug.Assert(strFind != null); if(strFind == null) return strString;
-			Debug.Assert(strNew != null); if(strNew == null) return strString;
+			if(strString == null) { Debug.Assert(false); return string.Empty; }
+			if(strFind == null) { Debug.Assert(false); return strString; }
+			if(strNew == null) { Debug.Assert(false); return strString; }
 
 			string str = strString;
 
@@ -503,89 +501,137 @@ namespace KeePassLib.Utility
 			if(bEmptyIfTransparent && (color.A != 255))
 				return string.Empty;
 
-			StringBuilder sb = new StringBuilder();
-			byte bt;
+			uint r = color.R, g = color.G, b = color.B, u;
 
-			sb.Append('#');
+			char[] v = new char[7];
+			v[0] = '#';
 
-			bt = (byte)(color.R >> 4);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
-			bt = (byte)(color.R & 0x0F);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
+			u = r >> 4;
+			v[1] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
+			u = r & 0x0F;
+			v[2] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
 
-			bt = (byte)(color.G >> 4);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
-			bt = (byte)(color.G & 0x0F);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
+			u = g >> 4;
+			v[3] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
+			u = g & 0x0F;
+			v[4] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
 
-			bt = (byte)(color.B >> 4);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
-			bt = (byte)(color.B & 0x0F);
-			if(bt < 10) sb.Append((char)('0' + bt)); else sb.Append((char)('A' - 10 + bt));
+			u = b >> 4;
+			v[5] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
+			u = b & 0x0F;
+			v[6] = (char)((u < 10) ? ('0' + u) : ('A' - 10 + u));
 
-			return sb.ToString();
+			return new string(v);
+		}
+
+		internal static void AppendTrim(StringBuilder sb, string strSeparator,
+			string strAppend)
+		{
+			AppendTrim(sb, strSeparator, strAppend, true, true);
+		}
+
+		internal static void AppendTrim(StringBuilder sb, string strSeparator,
+			string strAppend, bool bTrimStart, bool bTrimEnd)
+		{
+			if(sb == null) { Debug.Assert(false); return; }
+			if(strAppend == null) return; // No assert, like StringBuilder
+
+			if(bTrimStart && bTrimEnd) strAppend = strAppend.Trim();
+			else if(bTrimStart) strAppend = strAppend.TrimStart();
+			else if(bTrimEnd) strAppend = strAppend.TrimEnd();
+			if(strAppend.Length == 0) return;
+
+			if((sb.Length != 0) && !string.IsNullOrEmpty(strSeparator))
+				sb.Append(strSeparator);
+
+			sb.Append(strAppend);
 		}
 
 		/// <summary>
-		/// Format an exception and convert it to a string.
+		/// Convert an exception to a detailed string.
 		/// </summary>
-		/// <param name="excp"><c>Exception</c> to convert/format.</param>
+		/// <param name="ex"><c>Exception</c> to convert/format.</param>
 		/// <returns>String representing the exception.</returns>
-		public static string FormatException(Exception excp)
+		public static string FormatException(Exception ex)
 		{
-			string strText = string.Empty;
-			
-			if(!string.IsNullOrEmpty(excp.Message))
-				strText += excp.Message + MessageService.NewLine;
-#if !KeePassLibSD
-			if(!string.IsNullOrEmpty(excp.Source))
-				strText += excp.Source + MessageService.NewLine;
-#endif
-			if(!string.IsNullOrEmpty(excp.StackTrace))
-				strText += excp.StackTrace + MessageService.NewLine;
-#if !KeePassLibSD
-#if !KeePassUAP
-			if(excp.TargetSite != null)
-				strText += excp.TargetSite.ToString() + MessageService.NewLine;
-#endif
+			return StrUtil.FormatException(ex, true);
+		}
 
-			if(excp.Data != null)
+		internal static string FormatException(Exception ex, bool? obFull)
+		{
+			if(ex == null) { Debug.Assert(false); return string.Empty; }
+
+			StringBuilder sb = new StringBuilder();
+			string strNL = MessageService.NewLine;
+			GFunc<StringBuilder, string> fReturn = (sbReturn =>
+				((sbReturn.Length != 0) ? sbReturn.ToString() : KLRes.UnknownError));
+
+			try
 			{
-				strText += MessageService.NewLine;
-				foreach(DictionaryEntry de in excp.Data)
-					strText += @"'" + de.Key + @"' -> '" + de.Value + @"'" +
-						MessageService.NewLine;
-			}
-#endif
-
-			if(excp.InnerException != null)
-			{
-				strText += MessageService.NewLine + "Inner:" + MessageService.NewLine;
-				if(!string.IsNullOrEmpty(excp.InnerException.Message))
-					strText += excp.InnerException.Message + MessageService.NewLine;
-#if !KeePassLibSD
-				if(!string.IsNullOrEmpty(excp.InnerException.Source))
-					strText += excp.InnerException.Source + MessageService.NewLine;
-#endif
-				if(!string.IsNullOrEmpty(excp.InnerException.StackTrace))
-					strText += excp.InnerException.StackTrace + MessageService.NewLine;
-#if !KeePassLibSD
-#if !KeePassUAP
-				if(excp.InnerException.TargetSite != null)
-					strText += excp.InnerException.TargetSite.ToString();
-#endif
-
-				if(excp.InnerException.Data != null)
+				ExtendedException exExt = (ex as ExtendedException);
+				if(exExt != null)
 				{
-					strText += MessageService.NewLine;
-					foreach(DictionaryEntry de in excp.InnerException.Data)
-						strText += @"'" + de.Key + @"' -> '" + de.Value + @"'" +
-							MessageService.NewLine;
+					AppendTrim(sb, null, exExt.MessageStart);
+					AppendTrim(sb, strNL + strNL, StrUtil.FormatException(
+						exExt.InnerException, obFull));
+					AppendTrim(sb, strNL + strNL, exExt.MessageEnd);
+					return fReturn(sb);
+				}
+
+				AppendTrim(sb, null, ex.Message);
+				Debug.Assert(sb.Length > 0);
+
+				Exception exInner = ex.InnerException;
+				if(exInner == ex) { Debug.Assert(false); exInner = null; }
+
+				if(!(obFull ?? PwDefs.DebugMode))
+				{
+					if(exInner != null)
+						AppendTrim(sb, strNL + strNL, StrUtil.FormatException(exInner, false));
+					return fReturn(sb);
+				}
+
+				AppendTrim(sb, strNL, ex.GetType().Name);
+
+				// In .NET <= 4.0, HResult is protected
+				PropertyInfo pi = typeof(Exception).GetProperty("HResult",
+					BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+				if((pi != null) && pi.CanRead && (pi.PropertyType == typeof(int)))
+					AppendTrim(sb, " ", string.Format("(0x{0:X8})",
+						(uint)(int)pi.GetValue(ex, null)));
+				else { Debug.Assert(false); }
+
+#if (!KeePassLibSD && !KeePassUAP)
+				if(ex.TargetSite != null)
+					AppendTrim(sb, " @ ", ex.TargetSite.ToString());
+#endif
+
+				AppendTrim(sb, strNL, ex.StackTrace, false, true);
+
+#if !KeePassLibSD
+				AppendTrim(sb, strNL, ex.Source);
+				if(ex.Data != null)
+				{
+					foreach(DictionaryEntry de in ex.Data)
+					{
+						AppendTrim(sb, strNL, "Data: '");
+						sb.Append(de.Key);
+						sb.Append("' -> '");
+						sb.Append(de.Value);
+						sb.Append("'.");
+					}
 				}
 #endif
-			}
 
-			return strText;
+				if(exInner != null)
+				{
+					AppendTrim(sb, strNL + strNL, "Inner:");
+					AppendTrim(sb, strNL, StrUtil.FormatException(exInner, true));
+				}
+			}
+			catch(Exception) { Debug.Assert(false); }
+
+			return fReturn(sb);
 		}
 
 		public static bool TryParseUShort(string str, out ushort u)
@@ -736,9 +782,10 @@ namespace KeePassLib.Utility
 			return (strText.Substring(0, cchMax - 3) + "...");
 		}
 
-		private static readonly char[] g_vDots = new char[] { '.', '\u2026' };
-		private static readonly char[] g_vDotsWS = new char[] { '.', '\u2026',
-			' ', '\t', '\r', '\n' };
+		private static readonly char[] g_vDots = new char[] {
+			'.', '\u2026', '\u3002' };
+		private static readonly char[] g_vDotsWS = new char[] {
+			'.', '\u2026', '\u3002', ' ', '\t', '\r', '\n' };
 		internal static string TrimDots(string strText, bool bTrimWhiteSpace)
 		{
 			if(strText == null) { Debug.Assert(false); return string.Empty; }
@@ -995,6 +1042,7 @@ namespace KeePassLib.Utility
 			return (bHasAmp ? str.Replace(@"&", string.Empty) : str);
 		}
 
+		[Obsolete] // Use AccessKeyManagerEx, if possible
 		public static string AddAccelerator(string strMenuText,
 			List<char> lAvailKeys)
 		{
@@ -1117,25 +1165,31 @@ namespace KeePassLib.Utility
 
 		public static bool StringToBool(string str)
 		{
-			if(string.IsNullOrEmpty(str)) return false; // No assert
-
-			string s = str.Trim().ToLower();
-			if(s == "true") return true;
-			if(s == "yes") return true;
-			if(s == "1") return true;
-			if(s == "enabled") return true;
-			if(s == "checked") return true;
-
-			return false;
+			return (StringToBoolEx(str) ?? false);
 		}
 
 		public static bool? StringToBoolEx(string str)
 		{
 			if(string.IsNullOrEmpty(str)) return null;
 
-			string s = str.Trim().ToLower();
-			if(s == "true") return true;
-			if(s == "false") return false;
+			str = str.Trim();
+
+			StringComparison sc = StrUtil.CaseIgnoreCmp;
+
+			if(str.Equals("true", sc)) return true;
+			if(str.Equals("false", sc)) return false;
+
+			if(str.Equals("yes", sc)) return true;
+			if(str.Equals("no", sc)) return false;
+
+			if(str.Equals("enabled", sc)) return true;
+			if(str.Equals("disabled", sc)) return false;
+
+			if(str.Equals("checked", sc)) return true;
+			if(str.Equals("unchecked", sc)) return false;
+
+			if(str == "1") return true;
+			if(str == "0") return false;
 
 			return null;
 		}
@@ -1145,9 +1199,9 @@ namespace KeePassLib.Utility
 			return (bValue ? "true" : "false");
 		}
 
-		public static string BoolToStringEx(bool? bValue)
+		public static string BoolToStringEx(bool? obValue)
 		{
-			if(bValue.HasValue) return BoolToString(bValue.Value);
+			if(obValue.HasValue) return BoolToString(obValue.Value);
 			return "null";
 		}
 
@@ -1155,7 +1209,7 @@ namespace KeePassLib.Utility
 		/// Normalize new line characters in a string. Input strings may
 		/// contain mixed new line character sequences from all commonly
 		/// used operating systems (i.e. \r\n from Windows, \n from Unix
-		/// and \r from Mac OS.
+		/// and \r from MacOS.
 		/// </summary>
 		/// <param name="str">String with mixed new line characters.</param>
 		/// <param name="bWindows">If <c>true</c>, new line characters
@@ -1276,23 +1330,23 @@ namespace KeePassLib.Utility
 			const ulong uGB = uMB * uKB;
 			const ulong uTB = uGB * uKB;
 
-			if(uBytes == 0) return "0 KB";
+			if(uBytes == 0UL) return "0 KB";
 			if(uBytes <= uKB) return "1 KB";
-			if(uBytes <= uMB) return (((uBytes - 1UL) / uKB) + 1UL).ToString() + " KB";
-			if(uBytes <= uGB) return (((uBytes - 1UL) / uMB) + 1UL).ToString() + " MB";
-			if(uBytes <= uTB) return (((uBytes - 1UL) / uGB) + 1UL).ToString() + " GB";
+			if(uBytes < uMB) return ((((uBytes - 1UL) / uKB) + 1UL).ToString() + " KB");
+			if(uBytes < uGB) return ((((uBytes - 1UL) / uMB) + 1UL).ToString() + " MB");
+			if(uBytes < uTB) return ((((uBytes - 1UL) / uGB) + 1UL).ToString() + " GB");
 
-			return (((uBytes - 1UL) / uTB) + 1UL).ToString() + " TB";
+			return ((((uBytes - 1UL) / uTB) + 1UL).ToString() + " TB");
 		}
 
 		public static string FormatDataSizeKB(ulong uBytes)
 		{
 			const ulong uKB = 1024;
 
-			if(uBytes == 0) return "0 KB";
+			if(uBytes == 0UL) return "0 KB";
 			if(uBytes <= uKB) return "1 KB";
 			
-			return (((uBytes - 1UL) / uKB) + 1UL).ToString() + " KB";
+			return ((((uBytes - 1UL) / uKB) + 1UL).ToString() + " KB");
 		}
 
 		private static readonly char[] m_vVersionSep = new char[] { '.', ',' };
@@ -1427,7 +1481,7 @@ namespace KeePassLib.Utility
 		public static int[] DeserializeIntArray(string strSerialized)
 		{
 			if(strSerialized == null) throw new ArgumentNullException("strSerialized");
-			if(strSerialized.Length == 0) return new int[0];
+			if(strSerialized.Length == 0) return MemUtil.EmptyArray<int>();
 
 			string[] vParts = strSerialized.Split(' ');
 			int[] v = new int[vParts.Length];
@@ -2000,6 +2054,107 @@ namespace KeePassLib.Utility
 			}
 
 			return sb.ToString();
+		}
+
+		// Escape a string value (not an identifier) for CSS.
+		// https://www.w3.org/TR/CSS22/syndata.html#characters
+		// https://www.w3.org/TR/CSS22/syndata.html#strings
+		internal static string CssEscapeString(string str)
+		{
+			if(str == null) { Debug.Assert(false); return string.Empty; }
+
+			int cc = str.Length;
+			if(cc == 0) return string.Empty;
+
+			StringBuilder sb = new StringBuilder();
+
+			for(int i = 0; i < cc; ++i)
+			{
+				char ch = str[i];
+				switch(ch)
+				{
+					case '\"': sb.Append("\\\""); break;
+					case '\'': sb.Append("\\\'"); break;
+					case '\\': sb.Append("\\\\"); break;
+					case '\n': sb.Append("\\A "); break; // Space terminates hex value
+					case '\r': sb.Append("\\D "); break;
+					default: sb.Append(ch); break;
+				}
+			}
+
+			return sb.ToString();
+		}
+
+		internal static List<KeyValuePair<int, UnicodeCategory>> GetCategoryGroups(
+			string str)
+		{
+			List<KeyValuePair<int, UnicodeCategory>> l =
+				new List<KeyValuePair<int, UnicodeCategory>>();
+			if(str == null) { Debug.Assert(false); return l; }
+			if(str.Length == 0) return l;
+
+			int iStart = 0;
+			UnicodeCategory ucStart = UnicodeCategory.UppercaseLetter;
+
+			for(int i = 0; i < str.Length; ++i)
+			{
+				UnicodeCategory uc = char.GetUnicodeCategory(str[i]);
+
+				if((uc != ucStart) && (i != 0))
+				{
+					l.Add(new KeyValuePair<int, UnicodeCategory>(iStart, ucStart));
+					iStart = i;
+				}
+
+				ucStart = uc;
+			}
+
+			l.Add(new KeyValuePair<int, UnicodeCategory>(iStart, ucStart));
+
+			return l;
+		}
+
+		internal static string CommandToText(string strCommand)
+		{
+			if(strCommand == null) { Debug.Assert(false); return string.Empty; }
+			if(strCommand.Length == 0) return string.Empty;
+
+			return TrimDots(RemoveAccelerator(strCommand), true);
+		}
+
+		internal static bool Equals(char[] vA, char[] vB, bool bIgnoreNewLineEnc)
+		{
+			if(!bIgnoreNewLineEnc) return MemUtil.ArrayHelperExOfChar.Equals(vA, vB);
+			if(object.ReferenceEquals(vA, vB)) return true;
+			if((vA == null) || (vB == null)) return false;
+
+			int cA = vA.Length, cB = vB.Length;
+			int iA = 0, iB = 0;
+
+			while(iA < cA)
+			{
+				if(iB >= cB) return false;
+
+				char chA = vA[iA], chB = vB[iB];
+
+				if(chA == '\r')
+				{
+					if(((iA + 1) < cA) && (vA[iA + 1] == '\n')) ++iA;
+					chA = '\n';
+				}
+				if(chB == '\r')
+				{
+					if(((iB + 1) < cB) && (vB[iB + 1] == '\n')) ++iB;
+					chB = '\n';
+				}
+
+				if(chA != chB) return false;
+
+				++iA;
+				++iB;
+			}
+
+			return (iB == cB);
 		}
 	}
 }

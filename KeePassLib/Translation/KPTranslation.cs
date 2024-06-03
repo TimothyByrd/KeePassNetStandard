@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -228,7 +228,7 @@ namespace KeePassLib.Translation
 					((TreeView)c).RightToLeftLayout = true;
 				// else if(c is ToolStrip)
 				//	RtlApplyToToolStripItems(((ToolStrip)c).Items);
-				/* else if(c is Button) // Also see Label
+				/* else if(c is Button) // Cf. Label
 				{
 					Button btn = (c as Button);
 					Image img = btn.Image;
@@ -239,7 +239,7 @@ namespace KeePassLib.Translation
 						btn.Image = imgNew;
 					}
 				}
-				else if(c is Label) // Also see Button
+				else if(c is Label) // Cf. Button
 				{
 					Label lbl = (c as Label);
 					Image img = lbl.Image;
@@ -321,6 +321,26 @@ namespace KeePassLib.Translation
 
 			return string.Equals(strIso6391Code, m_props.Iso6391Code,
 				StrUtil.CaseIgnoreCmp);
+		}
+
+		internal string CombineToSentence(params string[] v)
+		{
+			if((v == null) || (v.Length == 0)) return string.Empty;
+
+			string strSep = "; ", strEnd = ".";
+			if(IsFor("zh-TW")) { strSep = "\uFF1B"; strEnd = "\u3002"; }
+
+			StringBuilder sb = new StringBuilder();
+			foreach(string str in v)
+			{
+				if(string.IsNullOrEmpty(str)) continue;
+
+				if(sb.Length != 0) sb.Append(strSep);
+				sb.Append(str);
+			}
+
+			if(sb.Length != 0) sb.Append(strEnd);
+			return sb.ToString();
 		}
 	}
 }

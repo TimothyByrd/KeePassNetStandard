@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -47,7 +47,8 @@ namespace KeePassLib.Utility
 	{
 		private const string AppXDoTool = "xdotool";
 
-		private static Dictionary<uint, bool> g_dForceReq = new Dictionary<uint, bool>();
+		private static readonly Dictionary<uint, bool> g_dForceReq =
+			new Dictionary<uint, bool>();
 		private static Thread g_thFixClip = null;
 		// private static Predicate<IntPtr> g_fOwnWindow = null;
 
@@ -55,11 +56,11 @@ namespace KeePassLib.Utility
 		private static DebugBreakTraceListener g_tlBreak = null;
 #endif
 
-		private static bool? g_bReq = null;
+		private static bool? g_obReq = null;
 		public static bool IsRequired()
 		{
-			if(!g_bReq.HasValue) g_bReq = NativeLib.IsUnix();
-			return g_bReq.Value;
+			if(!g_obReq.HasValue) g_obReq = NativeLib.IsUnix();
+			return g_obReq.Value;
 		}
 
 		// 106:
@@ -99,12 +100,19 @@ namespace KeePassLib.Utility
 		//   Timer causes 100% CPU load.
 		//   https://sourceforge.net/p/keepass/bugs/1527/
 		// 1530:
-		//   Mono's clipboard functions don't work properly.
+		//   Mono's clipboard functions don't work properly; use other in thread.
+		//   See also 1613.
 		//   https://sourceforge.net/p/keepass/bugs/1530/
+		//   https://bugzilla.redhat.com/show_bug.cgi?id=2052696
 		// 1574:
-		//   Finalizer of NotifyIcon throws on Mac OS X.
+		//   Finalizer of NotifyIcon throws on MacOS.
 		//   See also 1354.
 		//   https://sourceforge.net/p/keepass/bugs/1574/
+		// 1613:
+		//   Mono's clipboard functions don't work properly; use other.
+		//   See also 1530.
+		//   https://sourceforge.net/p/keepass/feature-requests/1613/
+		//   https://bugzilla.redhat.com/show_bug.cgi?id=2052696
 		// 1632:
 		//   RichTextBox rendering bug for bold/italic text.
 		//   https://sourceforge.net/p/keepass/bugs/1632/
@@ -126,7 +134,10 @@ namespace KeePassLib.Utility
 		// 2140:
 		//   Explicit control focusing is ignored.
 		//   https://sourceforge.net/p/keepass/feature-requests/2140/
-		// 5795: [Fixed]
+		// 2247:
+		//   Form size increases when calling ResumeLayout.
+		//   https://sourceforge.net/p/keepass/bugs/2247/
+		// 5795:
 		//   Text in input field is incomplete.
 		//   https://bugzilla.xamarin.com/show_bug.cgi?id=5795
 		//   https://sourceforge.net/p/keepass/discussion/329220/thread/d23dc88b/
@@ -160,6 +171,9 @@ namespace KeePassLib.Utility
 		// 100003:
 		//   Icon.ExtractAssociatedIcon always returns the same icon.
 		//   [NoRef]
+		// 100004:
+		//   Use native Argon2 implementation.
+		//   [NoRef]
 		// 190417:
 		//   Mono's Process.Start method replaces '\\' by '/'.
 		//   https://github.com/mono/mono/blob/master/mono/metadata/w32process-unix.c
@@ -178,7 +192,7 @@ namespace KeePassLib.Utility
 		// 686017:
 		//   Minimum sizes must be enforced.
 		//   https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=686017
-		// 688007: [Fixed]
+		// 688007:
 		//   Credentials are required for anonymous web requests.
 		//   https://bugzilla.novell.com/show_bug.cgi?id=688007
 		//   https://sourceforge.net/p/keepass/bugs/1950/
@@ -210,6 +224,8 @@ namespace KeePassLib.Utility
 
 			bool bForce;
 			if(g_dForceReq.TryGetValue(uBugID, out bForce)) return bForce;
+
+			if((uBugID == 1530) || (uBugID == 1613)) return false;
 
 			ulong v = NativeLib.MonoVersion;
 			if(v == 0) return true;
@@ -345,7 +361,8 @@ namespace KeePassLib.Utility
 				if(strHandle.Length == 0) { Debug.Assert(false); return false; }
 
 				// IntPtr h = new IntPtr(long.Parse(strHandle));
-				long.Parse(strHandle); // Validate
+				long l; // Validate
+				if(!long.TryParse(strHandle, out l)) { Debug.Assert(false); return false; }
 
 				// Detection of own windows based on Form.Handle
 				// comparisons doesn't work reliably (Mono's handles
@@ -478,7 +495,7 @@ namespace KeePassLib.Utility
 			return (pi.GetValue(c, null) as EventHandlerList);
 		}
 
-		private static Dictionary<object, MwaHandlerInfo> m_dictHandlers =
+		private static readonly Dictionary<object, MwaHandlerInfo> g_dHandlers =
 			new Dictionary<object, MwaHandlerInfo>();
 		private static void ApplyToButton(Button btn, Form fContext)
 		{
@@ -491,7 +508,7 @@ namespace KeePassLib.Utility
 			Delegate fnClick = ehl[objClickEvent]; // May be null
 
 			EventHandler fnOvr = new EventHandler(MonoWorkarounds.OnButtonClick);
-			m_dictHandlers[btn] = new MwaHandlerInfo(fnClick, fnOvr, dr, fContext);
+			g_dHandlers[btn] = new MwaHandlerInfo(fnClick, fnOvr, dr, fContext);
 
 			btn.DialogResult = DialogResult.None;
 			if(fnClick != null) ehl.RemoveHandler(objClickEvent, fnClick);
@@ -501,13 +518,13 @@ namespace KeePassLib.Utility
 		private static void ReleaseControl(Control c, Form fContext)
 		{
 			Button btn = (c as Button);
-			if(btn != null) ReleaseButton(btn, fContext);
+			if(btn != null) ReleaseButton(btn);
 		}
 
-		private static void ReleaseButton(Button btn, Form fContext)
+		private static void ReleaseButton(Button btn)
 		{
 			MwaHandlerInfo hi;
-			m_dictHandlers.TryGetValue(btn, out hi);
+			g_dHandlers.TryGetValue(btn, out hi);
 			if(hi == null) return;
 
 			object objClickEvent;
@@ -519,7 +536,7 @@ namespace KeePassLib.Utility
 				ehl[objClickEvent] = hi.FunctionOriginal;
 
 			btn.DialogResult = hi.Result;
-			m_dictHandlers.Remove(btn);
+			g_dHandlers.Remove(btn);
 		}
 
 		private static void OnButtonClick(object sender, EventArgs e)
@@ -528,7 +545,7 @@ namespace KeePassLib.Utility
 			if(btn == null) { Debug.Assert(false); return; }
 
 			MwaHandlerInfo hi;
-			m_dictHandlers.TryGetValue(btn, out hi);
+			g_dHandlers.TryGetValue(btn, out hi);
 			if(hi == null) { Debug.Assert(false); return; }
 
 			Form f = hi.FormContext;

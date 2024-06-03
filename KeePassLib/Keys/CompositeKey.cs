@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@ using System.Threading;
 using KeePassLib.Cryptography;
 using KeePassLib.Cryptography.KeyDerivation;
 using KeePassLib.Interfaces;
-using KeePassLib.Native;
 using KeePassLib.Resources;
 using KeePassLib.Security;
 using KeePassLib.Utility;
@@ -40,19 +39,19 @@ namespace KeePassLib.Keys
 	/// </summary>
 	public sealed class CompositeKey
 	{
-		private List<IUserKey> m_vUserKeys = new List<IUserKey>();
+		private readonly List<IUserKey> m_lUserKeys = new List<IUserKey>();
 
 		/// <summary>
 		/// List of all user keys contained in the current composite key.
 		/// </summary>
 		public IEnumerable<IUserKey> UserKeys
 		{
-			get { return m_vUserKeys; }
+			get { return m_lUserKeys; }
 		}
 
 		public uint UserKeyCount
 		{
-			get { return (uint)m_vUserKeys.Count; }
+			get { return (uint)m_lUserKeys.Count; }
 		}
 
 		/// <summary>
@@ -89,7 +88,7 @@ namespace KeePassLib.Keys
 		{
 			Debug.Assert(pKey != null); if(pKey == null) throw new ArgumentNullException("pKey");
 
-			m_vUserKeys.Add(pKey);
+			m_lUserKeys.Add(pKey);
 		}
 
 		/// <summary>
@@ -101,8 +100,8 @@ namespace KeePassLib.Keys
 		{
 			Debug.Assert(pKey != null); if(pKey == null) throw new ArgumentNullException("pKey");
 
-			Debug.Assert(m_vUserKeys.IndexOf(pKey) >= 0);
-			return m_vUserKeys.Remove(pKey);
+			Debug.Assert(m_lUserKeys.IndexOf(pKey) >= 0);
+			return m_lUserKeys.Remove(pKey);
 		}
 
 		/// <summary>
@@ -118,7 +117,7 @@ namespace KeePassLib.Keys
 			Debug.Assert(tUserKeyType != null);
 			if(tUserKeyType == null) throw new ArgumentNullException("tUserKeyType");
 
-			foreach(IUserKey pKey in m_vUserKeys)
+			foreach(IUserKey pKey in m_lUserKeys)
 			{
 				if(pKey == null) { Debug.Assert(false); continue; }
 
@@ -145,7 +144,7 @@ namespace KeePassLib.Keys
 			Debug.Assert(tUserKeyType != null);
 			if(tUserKeyType == null) throw new ArgumentNullException("tUserKeyType");
 
-			foreach(IUserKey pKey in m_vUserKeys)
+			foreach(IUserKey pKey in m_lUserKeys)
 			{
 				if(pKey == null) { Debug.Assert(false); continue; }
 
@@ -171,7 +170,7 @@ namespace KeePassLib.Keys
 
 			List<byte[]> lData = new List<byte[]>();
 			int cbData = 0;
-			foreach(IUserKey pKey in m_vUserKeys)
+			foreach(IUserKey pKey in m_lUserKeys)
 			{
 				ProtectedBinary b = pKey.KeyData;
 				if(b != null)
@@ -274,7 +273,7 @@ namespace KeePassLib.Keys
 		private sealed class CkGkTaskInfo
 		{
 			public volatile ProtectedBinary Key = null;
-			public volatile string Error = null;
+			public volatile Exception Exception = null;
 		}
 
 		internal ProtectedBinary GenerateKey32Ex(KdfParameters p, IStatusLogger sl)
@@ -290,13 +289,13 @@ namespace KeePassLib.Keys
 				try { ti.Key = GenerateKey32(p); }
 				catch(ThreadAbortException exAbort)
 				{
-					ti.Error = ((exAbort != null) ? exAbort.Message : null);
+					ti.Exception = exAbort;
 					Thread.ResetAbort();
 				}
 				catch(Exception ex)
 				{
 					Debug.Assert(false);
-					ti.Error = ((ex != null) ? ex.Message : null);
+					ti.Exception = ex;
 				}
 			};
 
@@ -315,7 +314,7 @@ namespace KeePassLib.Keys
 				}
 			}
 
-			if(!string.IsNullOrEmpty(ti.Error)) throw new Exception(ti.Error);
+			if(ti.Exception != null) throw new ExtendedException(null, ti.Exception);
 
 			Debug.Assert(ti.Key != null);
 			return ti.Key;
@@ -325,7 +324,7 @@ namespace KeePassLib.Keys
 		{
 			int nAccounts = 0;
 
-			foreach(IUserKey uKey in m_vUserKeys)
+			foreach(IUserKey uKey in m_lUserKeys)
 			{
 				if(uKey is KcpUserAccount)
 					++nAccounts;

@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@ namespace KeePassLib.Serialization
 		}
 
 		private bool m_bReadNextNode = true;
-		private Stack<PwGroup> m_ctxGroups = new Stack<PwGroup>();
+		private readonly Stack<PwGroup> m_ctxGroups = new Stack<PwGroup>();
 		private PwGroup m_ctxGroup = null;
 		private PwEntry m_ctxEntry = null;
 		private string m_ctxStringName = null;
@@ -119,7 +119,7 @@ namespace KeePassLib.Serialization
 			long lStreamLength = 1;
 			try
 			{
-				sParentStream.Position.ToString(); // Test Position support
+				sParentStream.Position.GetHashCode(); // Test Position support
 				lStreamLength = sParentStream.Length;
 			}
 			catch(Exception) { bSupportsStatus = false; }
@@ -389,9 +389,9 @@ namespace KeePassLib.Serialization
 					else if(xr.Name == ElemGroupDefaultAutoTypeSeq)
 						m_ctxGroup.DefaultAutoTypeSequence = ReadString(xr);
 					else if(xr.Name == ElemEnableAutoType)
-						m_ctxGroup.EnableAutoType = StrUtil.StringToBoolEx(ReadString(xr));
+						m_ctxGroup.EnableAutoType = ReadNullableBool(xr, null);
 					else if(xr.Name == ElemEnableSearching)
-						m_ctxGroup.EnableSearching = StrUtil.StringToBoolEx(ReadString(xr));
+						m_ctxGroup.EnableSearching = ReadNullableBool(xr, null);
 					else if(xr.Name == ElemLastTopVisibleEntry)
 						m_ctxGroup.LastTopVisibleEntry = ReadUuid(xr);
 					else if(xr.Name == ElemPreviousParentGroup)
@@ -473,9 +473,7 @@ namespace KeePassLib.Serialization
 						return SwitchContext(ctx, KdbContext.EntryCustomData, xr);
 					else if(xr.Name == ElemHistory)
 					{
-						Debug.Assert(m_bEntryInHistory == false);
-
-						if(m_bEntryInHistory == false)
+						if(!m_bEntryInHistory)
 						{
 							m_ctxHistoryBase = m_ctxEntry;
 							return SwitchContext(ctx, KdbContext.EntryHistory, xr);
@@ -604,15 +602,15 @@ namespace KeePassLib.Serialization
 
 			if((ctx == KdbContext.KeePassFile) && (xr.Name == ElemDocNode))
 				return KdbContext.Null;
-			else if((ctx == KdbContext.Meta) && (xr.Name == ElemMeta))
+			if((ctx == KdbContext.Meta) && (xr.Name == ElemMeta))
 				return KdbContext.KeePassFile;
-			else if((ctx == KdbContext.Root) && (xr.Name == ElemRoot))
+			if((ctx == KdbContext.Root) && (xr.Name == ElemRoot))
 				return KdbContext.KeePassFile;
-			else if((ctx == KdbContext.MemoryProtection) && (xr.Name == ElemMemoryProt))
+			if((ctx == KdbContext.MemoryProtection) && (xr.Name == ElemMemoryProt))
 				return KdbContext.Meta;
-			else if((ctx == KdbContext.CustomIcons) && (xr.Name == ElemCustomIcons))
+			if((ctx == KdbContext.CustomIcons) && (xr.Name == ElemCustomIcons))
 				return KdbContext.Meta;
-			else if((ctx == KdbContext.CustomIcon) && (xr.Name == ElemCustomIconItem))
+			if((ctx == KdbContext.CustomIcon) && (xr.Name == ElemCustomIconItem))
 			{
 				if(!m_uuidCustomIconID.Equals(PwUuid.Zero) &&
 					(m_pbCustomIconData != null))
@@ -632,11 +630,11 @@ namespace KeePassLib.Serialization
 
 				return KdbContext.CustomIcons;
 			}
-			else if((ctx == KdbContext.Binaries) && (xr.Name == ElemBinaries))
+			if((ctx == KdbContext.Binaries) && (xr.Name == ElemBinaries))
 				return KdbContext.Meta;
-			else if((ctx == KdbContext.CustomData) && (xr.Name == ElemCustomData))
+			if((ctx == KdbContext.CustomData) && (xr.Name == ElemCustomData))
 				return KdbContext.Meta;
-			else if((ctx == KdbContext.CustomDataItem) && (xr.Name == ElemStringDictExItem))
+			if((ctx == KdbContext.CustomDataItem) && (xr.Name == ElemStringDictExItem))
 			{
 				if((m_strCustomDataKey != null) && (m_strCustomDataValue != null))
 					m_pwDatabase.CustomData.Set(m_strCustomDataKey,
@@ -649,7 +647,7 @@ namespace KeePassLib.Serialization
 
 				return KdbContext.CustomData;
 			}
-			else if((ctx == KdbContext.Group) && (xr.Name == ElemGroup))
+			if((ctx == KdbContext.Group) && (xr.Name == ElemGroup))
 			{
 				if(PwUuid.Zero.Equals(m_ctxGroup.Uuid))
 					m_ctxGroup.Uuid = new PwUuid(true); // No assert (import)
@@ -661,17 +659,15 @@ namespace KeePassLib.Serialization
 					m_ctxGroup = null;
 					return KdbContext.Root;
 				}
-				else
-				{
-					m_ctxGroup = m_ctxGroups.Peek();
-					return KdbContext.Group;
-				}
+
+				m_ctxGroup = m_ctxGroups.Peek();
+				return KdbContext.Group;
 			}
-			else if((ctx == KdbContext.GroupTimes) && (xr.Name == ElemTimes))
+			if((ctx == KdbContext.GroupTimes) && (xr.Name == ElemTimes))
 				return KdbContext.Group;
-			else if((ctx == KdbContext.GroupCustomData) && (xr.Name == ElemCustomData))
+			if((ctx == KdbContext.GroupCustomData) && (xr.Name == ElemCustomData))
 				return KdbContext.Group;
-			else if((ctx == KdbContext.GroupCustomDataItem) && (xr.Name == ElemStringDictExItem))
+			if((ctx == KdbContext.GroupCustomDataItem) && (xr.Name == ElemStringDictExItem))
 			{
 				if((m_strGroupCustomDataKey != null) && (m_strGroupCustomDataValue != null))
 					m_ctxGroup.CustomData.Set(m_strGroupCustomDataKey, m_strGroupCustomDataValue);
@@ -682,7 +678,7 @@ namespace KeePassLib.Serialization
 
 				return KdbContext.GroupCustomData;
 			}
-			else if((ctx == KdbContext.Entry) && (xr.Name == ElemEntry))
+			if((ctx == KdbContext.Entry) && (xr.Name == ElemEntry))
 			{
 				// Create new UUID if absent
 				if(PwUuid.Zero.Equals(m_ctxEntry.Uuid))
@@ -696,16 +692,16 @@ namespace KeePassLib.Serialization
 
 				return KdbContext.Group;
 			}
-			else if((ctx == KdbContext.EntryTimes) && (xr.Name == ElemTimes))
+			if((ctx == KdbContext.EntryTimes) && (xr.Name == ElemTimes))
 				return KdbContext.Entry;
-			else if((ctx == KdbContext.EntryString) && (xr.Name == ElemString))
+			if((ctx == KdbContext.EntryString) && (xr.Name == ElemString))
 			{
 				m_ctxEntry.Strings.Set(m_ctxStringName, m_ctxStringValue);
 				m_ctxStringName = null;
 				m_ctxStringValue = null;
 				return KdbContext.Entry;
 			}
-			else if((ctx == KdbContext.EntryBinary) && (xr.Name == ElemBinary))
+			if((ctx == KdbContext.EntryBinary) && (xr.Name == ElemBinary))
 			{
 				if(string.IsNullOrEmpty(m_strDetachBins))
 					m_ctxEntry.Binaries.Set(m_ctxBinaryName, m_ctxBinaryValue);
@@ -721,9 +717,9 @@ namespace KeePassLib.Serialization
 				m_ctxBinaryValue = null;
 				return KdbContext.Entry;
 			}
-			else if((ctx == KdbContext.EntryAutoType) && (xr.Name == ElemAutoType))
+			if((ctx == KdbContext.EntryAutoType) && (xr.Name == ElemAutoType))
 				return KdbContext.Entry;
-			else if((ctx == KdbContext.EntryAutoTypeItem) && (xr.Name == ElemAutoTypeItem))
+			if((ctx == KdbContext.EntryAutoTypeItem) && (xr.Name == ElemAutoTypeItem))
 			{
 				AutoTypeAssociation atAssoc = new AutoTypeAssociation(m_ctxATName,
 					m_ctxATSeq);
@@ -732,9 +728,9 @@ namespace KeePassLib.Serialization
 				m_ctxATSeq = null;
 				return KdbContext.EntryAutoType;
 			}
-			else if((ctx == KdbContext.EntryCustomData) && (xr.Name == ElemCustomData))
+			if((ctx == KdbContext.EntryCustomData) && (xr.Name == ElemCustomData))
 				return KdbContext.Entry;
-			else if((ctx == KdbContext.EntryCustomDataItem) && (xr.Name == ElemStringDictExItem))
+			if((ctx == KdbContext.EntryCustomDataItem) && (xr.Name == ElemStringDictExItem))
 			{
 				if((m_strEntryCustomDataKey != null) && (m_strEntryCustomDataValue != null))
 					m_ctxEntry.CustomData.Set(m_strEntryCustomDataKey, m_strEntryCustomDataValue);
@@ -745,23 +741,21 @@ namespace KeePassLib.Serialization
 
 				return KdbContext.EntryCustomData;
 			}
-			else if((ctx == KdbContext.EntryHistory) && (xr.Name == ElemHistory))
+			if((ctx == KdbContext.EntryHistory) && (xr.Name == ElemHistory))
 			{
 				m_bEntryInHistory = false;
 				return KdbContext.Entry;
 			}
-			else if((ctx == KdbContext.RootDeletedObjects) && (xr.Name == ElemDeletedObjects))
+			if((ctx == KdbContext.RootDeletedObjects) && (xr.Name == ElemDeletedObjects))
 				return KdbContext.Root;
-			else if((ctx == KdbContext.DeletedObject) && (xr.Name == ElemDeletedObject))
+			if((ctx == KdbContext.DeletedObject) && (xr.Name == ElemDeletedObject))
 			{
 				m_ctxDeletedObject = null;
 				return KdbContext.RootDeletedObjects;
 			}
-			else
-			{
-				Debug.Assert(false);
-				throw new FormatException();
-			}
+
+			Debug.Assert(false);
+			throw new FormatException();
 		}
 
 		private string ReadString(XmlReader xr)
@@ -843,10 +837,21 @@ namespace KeePassLib.Serialization
 		{
 			string str = ReadString(xr);
 			if(str == ValTrue) return true;
-			else if(str == ValFalse) return false;
+			if(str == ValFalse) return false;
 
 			Debug.Assert(false);
 			return bDefault;
+		}
+
+		private bool? ReadNullableBool(XmlReader xr, bool? obDefault)
+		{
+			string str = (ReadString(xr) ?? string.Empty);
+			if(str.Equals(ValNull, StrUtil.CaseIgnoreCmp)) return null;
+			if(str.Equals(ValTrue, StrUtil.CaseIgnoreCmp)) return true;
+			if(str.Equals(ValFalse, StrUtil.CaseIgnoreCmp)) return false;
+
+			Debug.Assert(false);
+			return obDefault;
 		}
 
 		private PwUuid ReadUuid(XmlReader xr)

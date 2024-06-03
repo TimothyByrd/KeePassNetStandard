@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ namespace KeePassLib.Collections
 {
 	public sealed class PwObjectPool
 	{
-		private SortedDictionary<PwUuid, IStructureItem> m_dict =
+		private readonly SortedDictionary<PwUuid, IStructureItem> m_dict =
 			new SortedDictionary<PwUuid, IStructureItem>();
 
 		public static PwObjectPool FromGroupRecursive(PwGroup pgRoot, bool bEntries)
@@ -82,9 +82,9 @@ namespace KeePassLib.Collections
 
 	internal sealed class PwObjectPoolEx
 	{
-		private Dictionary<PwUuid, ulong> m_dUuidToId =
+		private readonly Dictionary<PwUuid, ulong> m_dUuidToId =
 			new Dictionary<PwUuid, ulong>();
-		private Dictionary<ulong, IStructureItem> m_dIdToItem =
+		private readonly Dictionary<ulong, IStructureItem> m_dIdToItem =
 			new Dictionary<ulong, IStructureItem>();
 
 		private PwObjectPoolEx()
@@ -176,7 +176,7 @@ namespace KeePassLib.Collections
 	internal sealed class PwObjectBlock<T> : IEnumerable<T>
 		where T : class, ITimeLogger, IStructureItem, IDeepCloneable<T>
 	{
-		private List<T> m_l = new List<T>();
+		private readonly List<T> m_l = new List<T>();
 
 		public T PrimaryItem
 		{

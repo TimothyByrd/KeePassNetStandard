@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2021 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -63,14 +63,14 @@ namespace KeePassLib.Cryptography.Hash
 
 		private readonly int m_cbHashLength;
 
-		private ulong[] m_h = new ulong[8];
-		private ulong[] m_t = new ulong[2];
-		private ulong[] m_f = new ulong[2];
-		private byte[] m_buf = new byte[NbBlockBytes];
+		private readonly ulong[] m_h = new ulong[8];
+		private readonly ulong[] m_t = new ulong[2];
+		private readonly ulong[] m_f = new ulong[2];
+		private readonly byte[] m_buf = new byte[NbBlockBytes];
 		private int m_cbBuf = 0;
 
-		private ulong[] m_m = new ulong[16];
-		private ulong[] m_v = new ulong[16];
+		private readonly ulong[] m_m = new ulong[16];
+		private readonly ulong[] m_v = new ulong[16];
 
 		public Blake2b()
 		{
