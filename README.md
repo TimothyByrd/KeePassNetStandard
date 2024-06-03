@@ -1,8 +1,8 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.49) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.57) to .Net Standard.
 
-Tags for previous versions of the port: v2.47, v2.48, v2.48.1
+Tags for previous versions of the port: v2.47, v2.48, v2.48.1, v2.49
 
 #### Table of contents
 [Why?](#h01)<br>
