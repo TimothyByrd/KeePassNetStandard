@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>NetStandard port of KeePassLib</Description>
     <!-- <GenerateAssemblyInfo>false</GenerateAssemblyInfo> -->
+    <OutDir>..\bin\$(Configuration)</OutDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -26,12 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="2.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="2.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.1.1" />
-    <PackageReference Include="System.Drawing.Common" Version="4.5.0" />
-    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="4.5.0" />
-    <PackageReference Include="System.Security.AccessControl" Version="4.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="8.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="8.0.6" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
+    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
+    <PackageReference Include="System.Security.AccessControl" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
