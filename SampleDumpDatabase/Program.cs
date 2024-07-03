@@ -8,6 +8,7 @@ using KeePassLib.Collections;
 using KeePassNetStandard;
 using DocumentFormat.OpenXml.Wordprocessing;
 using System.Text;
+using System.Collections.Generic;
 
 namespace SampleDumpDatabase
 {
@@ -19,154 +20,118 @@ namespace SampleDumpDatabase
         static void Main(string[] args)
         {
             var masterPassword = "master_password";
-            var dbpath = ".\\SampleDatabase.kdbx";
+            var dbPath = ".\\SampleDatabase.kdbx";
 
             bool nextArgIsDbPath = false;
-            bool nextArgIsMastetPassword = false;
+            bool nextArgIsMasterPassword = false;
             bool createWordDoc = false;
             foreach (var arg in args)
             {
                 if (nextArgIsDbPath)
                 {
-                    dbpath = arg;
+                    dbPath = arg;
                     nextArgIsDbPath = false;
                 }
-                else if (nextArgIsMastetPassword)
+                else if (nextArgIsMasterPassword)
                 {
                     masterPassword = arg;
-                    nextArgIsMastetPassword = false;
+                    nextArgIsMasterPassword = false;
                 }
                 else if (string.Equals(arg, "-db", StringComparison.Ordinal))
                     nextArgIsDbPath = true;
                 else if (string.Equals(arg, "-pw", StringComparison.Ordinal))
-                    nextArgIsMastetPassword = true;
+                    nextArgIsMasterPassword = true;
                 else if (string.Equals(arg, "-w", StringComparison.Ordinal))
                     createWordDoc = true;
             }
 
-            if (!File.Exists(dbpath))
+            if (!File.Exists(dbPath))
             {
-                Console.WriteLine($"Can't find KeePass database '{dbpath}'");
+                Console.WriteLine($"Can't find KeePass database '{dbPath}'");
                 return;
             }
-            Console.WriteLine($"Opening '{dbpath}'");
+            Console.WriteLine($"Opening '{dbPath}'");
 
-            var db = KeePassUtilities.OpenPasswordDatabase(dbpath, masterPassword);
+            var db = KeePassUtilities.OpenPasswordDatabase(dbPath, masterPassword);
 
             Console.WriteLine("Enumerating groups and entries:");
 
-            var sb = new StringBuilder();
+            var lines = new List<string>();
 
-            WriteGroupEntries(sb, db.RootGroup.Entries, "Root entries");
+            WriteGroupEntries(lines, db.RootGroup.Entries, "Root entries");
 
             foreach (var group in db.RootGroup.Groups)
-                WriteGroup(sb, group, "");
+                WriteGroup(lines, group, "");
 
-            Console.Write(sb);
+            foreach (var line in lines)
+                Console.WriteLine(line[1..]);
 
             if (createWordDoc)
-                CreateWordDocument(dbpath, sb);
+                CreateWordDocument(dbPath, lines);
 
+            Console.WriteLine();
             Console.WriteLine("Done!");
         }
 
-        //private static void WriteGroup(PwGroup group, string baseGroupName)
-        //{
-        //    var entries = group.Entries;
-        //    var groupName = string.IsNullOrWhiteSpace(baseGroupName) ? group.Name : $"{baseGroupName}/{group.Name}";
-
-        //    WriteGroupEntries(entries, groupName);
-
-        //    foreach (var subgroup in group.Groups)
-        //    {
-        //        WriteGroup(subgroup, groupName);
-        //    }
-        //}
-
-        //private static void WriteGroupEntries(PwObjectList<PwEntry> entries, string groupName)
-        //{
-        //    if (entries.Any())
-        //    {
-        //        var separator = SectionSeparator;
-        //        Console.WriteLine(separator);
-        //        Console.WriteLine($"Group: {groupName}");
-
-        //        foreach (var entry in entries.OrderBy(x => x.Strings.ReadSafe("Title")))
-        //        {
-        //            Console.WriteLine(separator);
-        //            ConsoleWriteEntry(entry);
-        //            separator = EntrySeparator;
-        //        }
-        //    }
-        //}
-
-        //private static void ConsoleWriteEntry(PwEntry entry)
-        //{
-        //    var title = entry.Strings.ReadSafe("Title");
-        //    var user = entry.Strings.ReadSafe("UserName");
-        //    var password = entry.Strings.ReadSafe("Password");
-        //    var url = entry.Strings.ReadSafe("URL");
-        //    var notes = entry.Strings.ReadSafe("Notes");
-        //    Console.WriteLine($"{title}");
-        //    Console.WriteLine($"user: '{user}', pass: '{password}'");
-        //    if (!string.IsNullOrWhiteSpace(url))
-        //        Console.WriteLine($"url: '{url}'");
-        //    if (!string.IsNullOrWhiteSpace(notes))
-        //        Console.WriteLine($"{notes.Trim()}");
-        //}
-
-        private static void WriteGroup(StringBuilder sb, PwGroup group, string baseGroupName)
+        private static void WriteGroup(List<string> lines, PwGroup group, string baseGroupName)
         {
             if (group == null || group.Name == "Old" || group.Name == "Recycle Bin")
                 return;
             var entries = group.Entries;
             var groupName = string.IsNullOrWhiteSpace(baseGroupName) ? group.Name : $"{baseGroupName}/{group.Name}";
 
-            WriteGroupEntries(sb, entries, groupName);
+            WriteGroupEntries(lines, entries, groupName);
 
             foreach (var subgroup in group.Groups)
             {
-                WriteGroup(sb, subgroup, groupName);
+                WriteGroup(lines, subgroup, groupName);
             }
         }
         
-        private static void WriteGroupEntries(StringBuilder sb, PwObjectList<PwEntry> entries, string groupName)
+        private static void WriteGroupEntries(List<string> lines, PwObjectList<PwEntry> entries, string groupName)
         {
             if (entries.Any())
             {
+                lines.Add($"-{SectionSeparator}");
+                lines.Add($"+Group: {groupName}");
+                
+                var groupingChar = '+';
                 var separator = SectionSeparator;
-                sb.AppendLine(separator);
-                sb.AppendLine($"Group: {groupName}");
-
                 foreach (var entry in entries.OrderBy(x => x.Strings.ReadSafe("Title")))
                 {
-                    sb.AppendLine(separator);
-                    WriteEntry(sb, entry);
+                    
+                    lines.Add($"{groupingChar}{separator}");
+                    WriteEntry(lines, entry, groupingChar);
+                    groupingChar = '-';
                     separator = EntrySeparator;
                 }
             }
         }
-        
-        private static void WriteEntry(StringBuilder sb, PwEntry entry)
+
+        private static void WriteEntry(List<string> lines, PwEntry entry, char initialGroupingChar)
         {
             var title = entry.Strings.ReadSafe("Title");
             var user = entry.Strings.ReadSafe("UserName");
             var password = entry.Strings.ReadSafe("Password");
             var url = entry.Strings.ReadSafe("URL");
             var notes = entry.Strings.ReadSafe("Notes")?.Trim();
-            sb.AppendLine($"{title}");
-            sb.AppendLine($"user: {user}, pass: {password}");
+            lines.Add($"{initialGroupingChar}{title}");
+            lines.Add($"+user: {user}, pass: {password}");
             if (!string.IsNullOrWhiteSpace(url))
-                sb.AppendLine($"url: {url}");
+                lines.Add($"+url: {url}");
             if (!string.IsNullOrWhiteSpace(notes))
-                sb.AppendLine($"{notes.Trim()}");
+            {
+                var noteLines = notes.Split('\n');
+                foreach (var line in noteLines)
+                   lines.Add($"+{line.Trim()}");
+            }
         }
 
-        private static void CreateWordDocument(string dbpath, StringBuilder sb)
+        private static void CreateWordDocument(string dbPath, List<string> lines)
         {
             var now = DateTime.Now.ToString("yyyy-MM-dd");
             var extension = $".{now}.docx";
-            var docPath = Path.ChangeExtension(dbpath, extension);
+            var docPath = Path.ChangeExtension(dbPath, extension);
             if (File.Exists(docPath))
                 File.Delete(docPath);
             using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(docPath, WordprocessingDocumentType.Document))
@@ -178,11 +143,27 @@ namespace SampleDumpDatabase
                 mainPart.Document = new Document();
                 Body body = mainPart.Document.AppendChild(new Body());
 
-                AppendParagraph(body, $"Passwords {now}");
+                var paragraphLines = new List<string>
+                {
+                    $"Passwords {now}"
+                };
 
-                var lines = sb.ToString().Trim().Split('\n');
                 foreach (var line in lines)
-                    AppendParagraph(body, line);
+                {
+                    var groupingChar = line[0];
+                    var lineText = line[1..];
+                    if (groupingChar == '-' && paragraphLines.Count > 0)
+                    {
+                        WriteParagraph(body, paragraphLines);
+                        paragraphLines.Clear();
+                    }
+                    paragraphLines.Add(lineText);
+                }
+
+                if (paragraphLines.Count > 0)
+                    WriteParagraph(body, paragraphLines);
+
+                    //AppendParagraph(body, line);
 
                 var sectionProps = new SectionProperties();
                 mainPart.Document.Body.Append(sectionProps);
@@ -207,12 +188,15 @@ namespace SampleDumpDatabase
                 sectionProps.Append(paragraphColumns);
             }
 
-            static void AppendParagraph(Body body, string str)
+            static void WriteParagraph(Body body, List<string> lines)
             {
                 Paragraph para = body.AppendChild(new Paragraph());
 
                 var spacing = new SpacingBetweenLines() { Line = "240", LineRule = LineSpacingRuleValues.Auto, Before = "0", After = "0" };
-                var paragraphProperties = new ParagraphProperties();
+                var paragraphProperties = new ParagraphProperties
+                {
+                    KeepLines = new()
+                };
                 paragraphProperties.Append(spacing);
                 para.Append(paragraphProperties);
 
@@ -225,9 +209,15 @@ namespace SampleDumpDatabase
                 runProp.Append(size);
                 run.PrependChild<RunProperties>(runProp);
 
-                if (string.IsNullOrEmpty(str)) str = ".";
-                run.AppendChild(new Text(str));
-
+                var addBreak = false;
+                foreach (var line in lines)
+                {
+                    if (addBreak)
+                        run.AppendChild(new Break());
+                    addBreak = true;
+                    if (line.Length > 0)
+                        run.AppendChild(new Text(line));
+                }
             }
         }
     }
