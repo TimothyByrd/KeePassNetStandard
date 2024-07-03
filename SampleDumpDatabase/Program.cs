@@ -13,6 +13,9 @@ namespace SampleDumpDatabase
 {
     class Program
     {
+        private const string SectionSeparator = "****************************************";
+        private const string EntrySeparator = "----------------------------------------";
+
         static void Main(string[] args)
         {
             var masterPassword = "master_password";
@@ -84,7 +87,7 @@ namespace SampleDumpDatabase
         //{
         //    if (entries.Any())
         //    {
-        //        var separator = "****************************************";
+        //        var separator = SectionSeparator;
         //        Console.WriteLine(separator);
         //        Console.WriteLine($"Group: {groupName}");
 
@@ -92,7 +95,7 @@ namespace SampleDumpDatabase
         //        {
         //            Console.WriteLine(separator);
         //            ConsoleWriteEntry(entry);
-        //            separator = "----------------------------------------";
+        //            separator = EntrySeparator;
         //        }
         //    }
         //}
@@ -114,6 +117,8 @@ namespace SampleDumpDatabase
 
         private static void WriteGroup(StringBuilder sb, PwGroup group, string baseGroupName)
         {
+            if (group == null || group.Name == "Old" || group.Name == "Recycle Bin")
+                return;
             var entries = group.Entries;
             var groupName = string.IsNullOrWhiteSpace(baseGroupName) ? group.Name : $"{baseGroupName}/{group.Name}";
 
@@ -129,7 +134,7 @@ namespace SampleDumpDatabase
         {
             if (entries.Any())
             {
-                var separator = "****************************************";
+                var separator = SectionSeparator;
                 sb.AppendLine(separator);
                 sb.AppendLine($"Group: {groupName}");
 
@@ -137,7 +142,7 @@ namespace SampleDumpDatabase
                 {
                     sb.AppendLine(separator);
                     WriteEntry(sb, entry);
-                    separator = "----------------------------------------";
+                    separator = EntrySeparator;
                 }
             }
         }
