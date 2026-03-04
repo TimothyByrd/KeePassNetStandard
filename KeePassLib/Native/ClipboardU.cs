@@ -25,7 +25,8 @@ using System.Text;
 
 namespace KeePassLib.Native
 {
-	internal static class ClipboardU
+#if !NETSTANDARD2_0
+    internal static class ClipboardU
 	{
 		internal const string XSel = "xsel";
 		private const string XSelV = "--version";
@@ -187,4 +188,5 @@ namespace KeePassLib.Native
 				str, XSelWF) != null);
 		}
 	}
+#endif
 }

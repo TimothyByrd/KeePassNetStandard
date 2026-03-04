@@ -2,17 +2,28 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>NetStandard port of KeePassLib</Description>
+    <Description>.NET port of KeePassLib</Description>
     <!-- <GenerateAssemblyInfo>false</GenerateAssemblyInfo> -->
     <OutDir>..\bin\$(Configuration)</OutDir>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>KeePassNetStandard.$(AssemblyName)</PackageId>
+    <Version>2.57.0</Version>
+    <Product>KeePassNetStandard</Product>
+	<Description>Port of KeePassLib for .NET Standard 2.0.</Description>
+    <Authors>TimothyByrd</Authors>
+    <AssemblyTitle>KeePassNetStandard</AssemblyTitle>
+	<PackageProjectUrl>https://github.com/TimothyByrd/KeePassNetStandard</PackageProjectUrl>
+	<RepositoryType>git</RepositoryType>
+	<RepositoryUrl>https://github.com/TimothyByrd/KeePassNetStandard.git</RepositoryUrl>
+	<DefineConstants></DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,15 +33,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Native\ClipboardU.cs" />
     <Compile Remove="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.6" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="8.0.6" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="8.0.6" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.24" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="8.0.24" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="8.0.24" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.24" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
     <PackageReference Include="System.Security.AccessControl" Version="6.0.1" />
   </ItemGroup>
