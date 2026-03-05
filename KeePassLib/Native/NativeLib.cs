@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,21 +41,94 @@ using KeePassLib.Utility;
 
 namespace KeePassLib.Native
 {
-	/// <summary>
-	/// Interface to native library (library containing fast versions of
-	/// several cryptographic functions).
-	/// </summary>
 	public static class NativeLib
 	{
-		private static bool g_bAllowNative = true;
+		internal const string BaseName = "KeePassLibN";
+		internal const string DllFileX32 = NativeLib.BaseName + ".x32.dll";
+		internal const string DllFileX64 = NativeLib.BaseName + ".x64.dll";
+		internal const string DllFileA64 = NativeLib.BaseName + ".a64.dll";
 
-		/// <summary>
-		/// If <c>true</c>, the native library is used.
-		/// </summary>
+		internal const CallingConvention DllCallingConvention = CallingConvention.Cdecl;
+
+		private static readonly object g_oSyncRoot = new object();
+
+		private static bool g_bAllowNative = true;
 		public static bool AllowNative
 		{
 			get { return g_bAllowNative; }
 			set { g_bAllowNative = value; }
+		}
+
+		internal static string FileName
+		{
+			get
+			{
+				string str;
+				switch(NativeLib.ProcessArchitecture)
+				{
+					case ArchitectureEx.X86: str = DllFileX32; break;
+					case ArchitectureEx.X64: str = DllFileX64; break;
+					case ArchitectureEx.Arm64: str = DllFileA64; break;
+					default: Debug.Assert(false); str = null; break;
+				}
+				return str;
+			}
+		}
+
+		private static int g_iProcessArch = -1;
+		internal static ArchitectureEx ProcessArchitecture
+		{
+			get
+			{
+#if DEBUG
+				foreach(ArchitectureEx aE in Enum.GetValues(typeof(ArchitectureEx)))
+				{
+					Debug.Assert((int)aE >= 0);
+				}
+#endif
+
+				if(g_iProcessArch >= 0) return (ArchitectureEx)g_iProcessArch;
+
+				ArchitectureEx a = ArchitectureEx.None;
+				try
+				{
+					Type t = typeof(Marshal).Assembly.GetType(
+						"System.Runtime.InteropServices.RuntimeInformation", false);
+					if(t != null)
+					{
+						PropertyInfo pi = t.GetProperty("ProcessArchitecture",
+							(BindingFlags.Public | BindingFlags.Static));
+						if(pi != null)
+						{
+							object o = pi.GetValue(null, null);
+							string str = ((o != null) ? o.ToString() : null);
+							if(str != null)
+							{
+								switch(str)
+								{
+									case "X86": a = ArchitectureEx.X86; break;
+									case "X64": a = ArchitectureEx.X64; break;
+									case "Arm": a = ArchitectureEx.Arm; break;
+									case "Arm64": a = ArchitectureEx.Arm64; break;
+									default: Debug.Assert(false); break;
+								}
+							}
+							else { Debug.Assert(false); }
+						}
+						else { Debug.Assert(false); }
+					}
+					else
+					{
+						// The RuntimeInformation class has been added in
+						// .NET 4.7.1; before that, we can assume x86/x64
+						a = ((IntPtr.Size == 4) ? ArchitectureEx.X86 : ArchitectureEx.X64);
+					}
+				}
+				catch(Exception) { Debug.Assert(false); }
+
+				g_iProcessArch = (int)a;
+				return a;
+			}
 		}
 
 		private static ulong? g_ouMonoVersion = null;
@@ -96,71 +169,65 @@ namespace KeePassLib.Native
 			}
 		}
 
-		/// <summary>
-		/// Determine if the native library is installed.
-		/// </summary>
-		/// <returns>Returns <c>true</c>, if the native library is installed.</returns>
 		public static bool IsLibraryInstalled()
 		{
-			byte[] pbDummy0 = new byte[32];
-			byte[] pbDummy1 = new byte[32];
+			byte[] pbDummyD = new byte[32], pbDummyS = new byte[32];
 
-			bool bAllow = g_bAllowNative; // Save the native option
+			lock(g_oSyncRoot)
+			{
+				bool bAllow = g_bAllowNative;
+				g_bAllowNative = true;
 
-			// Temporarily allow native functions and try to load the library
-			g_bAllowNative = true;
-			bool bResult = TransformKey256(pbDummy0, pbDummy1, 16);
-
-			// Restore the native option and return result
-			g_bAllowNative = bAllow;
-			return bResult;
+				try { return TransformKey256(pbDummyD, pbDummyS, 16); }
+				finally { g_bAllowNative = bAllow; }
+			}
 		}
 
-		private static bool? g_bIsUnix = null;
+		private static bool? g_obIsUnix = null;
 		public static bool IsUnix()
 		{
-			if(g_bIsUnix.HasValue) return g_bIsUnix.Value;
+			if(g_obIsUnix.HasValue) return g_obIsUnix.Value;
 
 			PlatformID p = GetPlatformID();
 
 			// Mono defines Unix as 128 in early .NET versions
 #if !KeePassLibSD
-			g_bIsUnix = ((p == PlatformID.Unix) || (p == PlatformID.MacOSX) ||
+			g_obIsUnix = ((p == PlatformID.Unix) || (p == PlatformID.MacOSX) ||
 				((int)p == 128));
 #else
-			g_bIsUnix = (((int)p == 4) || ((int)p == 6) || ((int)p == 128));
+			g_obIsUnix = (((int)p == 4) || ((int)p == 6) || ((int)p == 128));
 #endif
-			return g_bIsUnix.Value;
+			return g_obIsUnix.Value;
 		}
 
-		private static PlatformID? g_platID = null;
+		private static PlatformID? g_opl = null;
 		public static PlatformID GetPlatformID()
 		{
-			if(g_platID.HasValue) return g_platID.Value;
+			if(g_opl.HasValue) return g_opl.Value;
 
 #if KeePassUAP
-			g_platID = EnvironmentExt.OSVersion.Platform;
+			g_opl = EnvironmentExt.OSVersion.Platform;
 #else
-			g_platID = Environment.OSVersion.Platform;
+			g_opl = Environment.OSVersion.Platform;
 #endif
 
 #if (!KeePassLibSD && !KeePassUAP)
 			// Mono returns PlatformID.Unix on MacOS, workaround this
-			if(g_platID.Value == PlatformID.Unix)
+			if(g_opl.Value == PlatformID.Unix)
 			{
 				if((RunConsoleApp("uname", null) ?? string.Empty).Trim().Equals(
 					"Darwin", StrUtil.CaseIgnoreCmp))
-					g_platID = PlatformID.MacOSX;
+					g_opl = PlatformID.MacOSX;
 			}
 #endif
 
-			return g_platID.Value;
+			return g_opl.Value;
 		}
 
-		private static DesktopType? g_tDesktop = null;
+		private static DesktopType? g_otDesktop = null;
 		public static DesktopType GetDesktopType()
 		{
-			if(!g_tDesktop.HasValue)
+			if(!g_otDesktop.HasValue)
 			{
 				DesktopType t = DesktopType.None;
 				if(!IsUnix()) t = DesktopType.Windows;
@@ -201,10 +268,10 @@ namespace KeePassLib.Native
 					catch(Exception) { Debug.Assert(false); }
 				}
 
-				g_tDesktop = t;
+				g_otDesktop = t;
 			}
 
-			return g_tDesktop.Value;
+			return g_otDesktop.Value;
 		}
 
 		private static bool? g_obWayland = null;
@@ -225,6 +292,25 @@ namespace KeePassLib.Native
 			}
 
 			return g_obWayland.Value;
+		}
+
+		internal static string ToString(ArchitectureEx a)
+		{
+			string str;
+
+			switch(a)
+			{
+				case ArchitectureEx.X86: str = "x86"; break;
+				case ArchitectureEx.X64: str = "x64"; break;
+				case ArchitectureEx.Arm: str = "ARM32"; break;
+				case ArchitectureEx.Arm64: str = "ARM64"; break;
+				default:
+					Debug.Assert(a == ArchitectureEx.None);
+					str = string.Empty;
+					break;
+			}
+
+			return str;
 		}
 
 #if (!KeePassLibSD && !KeePassUAP)
@@ -275,7 +361,7 @@ namespace KeePassLib.Native
 						EnsureNoBom(p.StandardInput);
 
 						p.StandardInput.Write(strStdInput);
-						p.StandardInput.Close();
+						p.StandardInput.Dispose();
 					}
 
 					string strOutput = string.Empty;
@@ -385,40 +471,71 @@ namespace KeePassLib.Native
 		}
 #endif
 
-		/// <summary>
-		/// Transform a key.
-		/// </summary>
-		/// <param name="pbBuf256">Source and destination buffer.</param>
-		/// <param name="pbKey256">Key to use for the transformation.</param>
-		/// <param name="uRounds">Number of transformation rounds.</param>
-		/// <returns>Returns <c>true</c>, if the key was transformed successfully.</returns>
-		public static bool TransformKey256(byte[] pbBuf256, byte[] pbKey256,
+		public static bool TransformKey256(byte[] pbData32, byte[] pbSeed32,
 			ulong uRounds)
 		{
 #if KeePassUAP
 			return false;
 #else
-			if(pbBuf256 == null) { Debug.Assert(false); return false; }
-			if(pbBuf256.Length != 32) { Debug.Assert(false); return false; }
-			if(pbKey256 == null) { Debug.Assert(false); return false; }
-			if(pbKey256.Length != 32) { Debug.Assert(false); return false; }
+			if(pbData32 == null) { Debug.Assert(false); return false; }
+			if(pbData32.Length != 32) { Debug.Assert(false); return false; }
+			if(pbSeed32 == null) { Debug.Assert(false); return false; }
+			if(pbSeed32.Length != 32) { Debug.Assert(false); return false; }
 
-			if(!g_bAllowNative) return false;
+			if(IsUnix() || !g_bAllowNative) return false;
 
+			byte[] pbDataL = null, pbDataR = null;
 			try
 			{
-				using(NativeBufferEx nbBuf = new NativeBufferEx(pbBuf256,
+				pbDataL = MemUtil.Mid(pbData32, 0, 16);
+				pbDataR = MemUtil.Mid(pbData32, 16, 16);
+
+				bool bL = false, bR = false;
+
+				Thread thL = new Thread(new ThreadStart(() => { bL =
+					TransformKeyHalf(pbDataL, pbSeed32, uRounds); }));
+				Thread thR = new Thread(new ThreadStart(() => { bR =
+					TransformKeyHalf(pbDataR, pbSeed32, uRounds); }));
+				thL.Start();
+				thR.Start();
+				thL.Join();
+				thR.Join();
+
+				if(bL && bR)
+				{
+					Array.Copy(pbDataL, 0, pbData32, 0, 16);
+					Array.Copy(pbDataR, 0, pbData32, 16, 16);
+					return true;
+				}
+			}
+			catch(Exception) { Debug.Assert(false); }
+			finally
+			{
+				MemUtil.ZeroByteArray(pbDataL);
+				MemUtil.ZeroByteArray(pbDataR);
+			}
+
+			return false;
+		}
+
+		private static bool TransformKeyHalf(byte[] pbData16, byte[] pbSeed32,
+			ulong uRounds)
+		{
+			try
+			{
+				using(NativeBufferEx nbData16 = new NativeBufferEx(pbData16,
 					true, true, 16))
 				{
-					using(NativeBufferEx nbKey = new NativeBufferEx(pbKey256,
+					using(NativeBufferEx nbSeed32 = new NativeBufferEx(pbSeed32,
 						true, true, 16))
 					{
-						if(NativeMethods.TransformKey(nbBuf.Data, nbKey.Data, uRounds))
+						if(NativeMethods.AesKdfTransformHalf(nbData16.Data,
+							nbSeed32.Data, uRounds))
 						{
-							nbBuf.CopyTo(pbBuf256);
+							nbData16.CopyTo(pbData16);
 							return true;
 						}
-						else { Debug.Assert(false); }
+						Debug.Assert(false);
 					}
 				}
 			}
@@ -429,69 +546,48 @@ namespace KeePassLib.Native
 #endif
 		}
 
-		/// <summary>
-		/// Benchmark key transformation.
-		/// </summary>
-		/// <param name="uTimeMs">Number of milliseconds to perform the benchmark.</param>
-		/// <param name="puRounds">Number of transformations done.</param>
-		/// <returns>Returns <c>true</c>, if the benchmark was successful.</returns>
-		public static bool TransformKeyBenchmark256(uint uTimeMs, out ulong puRounds)
+		public static bool TransformKeyBenchmark256(uint uMilliseconds, out ulong uRounds)
 		{
-			puRounds = 0;
+			uRounds = 0;
 
 #if KeePassUAP
 			return false;
 #else
-			if(!m_bAllowNative) return false;
+			if(IsUnix() || !g_bAllowNative) return false;
 
-			try { puRounds = NativeMethods.TransformKeyBenchmark(uTimeMs); }
-			catch(Exception) { return false; }
+			try
+			{
+				ulong uRoundsL = 0, uRoundsR = 0;
 
-			return true;
+				Thread thL = new Thread(new ThreadStart(() => { uRoundsL =
+					TransformKeyBenchmarkHalf(uMilliseconds); }));
+				Thread thR = new Thread(new ThreadStart(() => { uRoundsR =
+					TransformKeyBenchmarkHalf(uMilliseconds); }));
+				thL.Start();
+				thR.Start();
+				thL.Join();
+				thR.Join();
+
+				if((uRoundsL != 0) && (uRoundsR != 0))
+				{
+					uRounds = (uRoundsL >> 1) + (uRoundsR >> 1);
+					return true;
+				}
+			}
+			catch(Exception) { Debug.Assert(false); }
+
+			return false;
+		}
+
+		private static ulong TransformKeyBenchmarkHalf(uint uMilliseconds)
+		{
+			try { return NativeMethods.AesKdfTransformBenchmarkHalf(uMilliseconds); }
+			catch(DllNotFoundException) { }
+			catch(Exception) { Debug.Assert(false); }
+
+			return 0;
 #endif
 		}
-
-#if KeePassUAP // NETSTANDARD2_0
-#else
-		private static KeyValuePair<IntPtr, IntPtr> PrepareArrays256(byte[] pBuf256,
-			byte[] pKey256)
-		{
-			Debug.Assert((pBuf256 != null) && (pBuf256.Length == 32));
-			if(pBuf256 == null) throw new ArgumentNullException("pBuf256");
-			if(pBuf256.Length != 32) throw new ArgumentException();
-
-			Debug.Assert((pKey256 != null) && (pKey256.Length == 32));
-			if(pKey256 == null) throw new ArgumentNullException("pKey256");
-			if(pKey256.Length != 32) throw new ArgumentException();
-
-			IntPtr hBuf = Marshal.AllocHGlobal(pBuf256.Length);
-			Marshal.Copy(pBuf256, 0, hBuf, pBuf256.Length);
-
-			IntPtr hKey = Marshal.AllocHGlobal(pKey256.Length);
-			Marshal.Copy(pKey256, 0, hKey, pKey256.Length);
-
-			return new KeyValuePair<IntPtr, IntPtr>(hBuf, hKey);
-		}
-
-		private static void GetBuffers256(KeyValuePair<IntPtr, IntPtr> kvpSource,
-			byte[] pbDestBuf, byte[] pbDestKey)
-		{
-			if(kvpSource.Key != IntPtr.Zero)
-				Marshal.Copy(kvpSource.Key, pbDestBuf, 0, pbDestBuf.Length);
-
-			if(kvpSource.Value != IntPtr.Zero)
-				Marshal.Copy(kvpSource.Value, pbDestKey, 0, pbDestKey.Length);
-		}
-
-		private static void FreeArrays(KeyValuePair<IntPtr, IntPtr> kvpPointers)
-		{
-			if(kvpPointers.Key != IntPtr.Zero)
-				Marshal.FreeHGlobal(kvpPointers.Key);
-
-			if(kvpPointers.Value != IntPtr.Zero)
-				Marshal.FreeHGlobal(kvpPointers.Value);
-		}
-#endif
 
 		// internal static Type GetUwpType(string strType)
 		// {

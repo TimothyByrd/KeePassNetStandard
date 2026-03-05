@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -207,7 +207,7 @@ namespace KeePassLib.Cryptography.KeyDerivation
 			return GCryptRun32(pbData32, pbKey32, ref uRounds, 0);
 		}
 
-		private static bool TransformKeyBenchmarkGCrypt(uint uTimeMs, out ulong uRounds)
+		private static bool TransformKeyGCryptBenchmark(uint uTimeMs, out ulong uRounds)
 		{
 			uRounds = 0;
 			if(uTimeMs == 0) { Debug.Assert(false); return true; }

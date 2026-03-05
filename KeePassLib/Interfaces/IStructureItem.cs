@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,20 +23,20 @@ namespace KeePassLib.Interfaces
 {
 	public interface IStructureItem : ITimeLogger // Provides LocationChanged
 	{
-		PwUuid Uuid
-		{
-			get;
-			set;
-		}
+		/// <summary>
+		/// UUID that identifies this object.
+		/// </summary>
+		PwUuid Uuid { get; set; }
 
-		PwGroup ParentGroup
-		{
-			get;
-		}
+		/// <summary>
+		/// Get the group that contains this object.
+		/// </summary>
+		PwGroup ParentGroup { get; }
 
-		PwUuid PreviousParentGroup
-		{
-			get;
-		}
+		/// <summary>
+		/// Get the group that has contained this object before it has been
+		/// moved the last time.
+		/// </summary>
+		PwUuid PreviousParentGroup { get; }
 	}
 }

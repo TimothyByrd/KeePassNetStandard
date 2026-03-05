@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -301,6 +301,21 @@ namespace KeePassLib
 		/// subject to future changes in size.
 		/// </summary>
 		UIIcon = 1
+	}
+
+	// Cf. System.Runtime.InteropServices.Architecture (since .NET 4.7.1).
+	internal enum ArchitectureEx
+	{
+		/// <summary>Unknown processor architecture.</summary>
+		None = 0,
+		/// <summary>32-bit x86 (x86-32).</summary>
+		X86,
+		/// <summary>64-bit x86 (x86-64).</summary>
+		X64,
+		/// <summary>32-bit ARM (ARM32).</summary>
+		Arm,
+		/// <summary>64-bit ARM (ARM64).</summary>
+		Arm64
 	}
 
 	public enum DesktopType

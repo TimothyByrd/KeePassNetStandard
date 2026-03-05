@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -352,7 +352,7 @@ namespace KeePassLib.Serialization
 		{
 			if(m_uForceVersion != 0) return m_uForceVersion;
 
-			// See also KeePassKdb2x3.Export (KDBX 3.1 export module)
+			// See also KeePassKdbx2v3.Export (KDBX 3.1 export module)
 
 			uint uMin = 0;
 
@@ -490,14 +490,14 @@ namespace KeePassLib.Serialization
 			return pbHeaderHmac;
 		}
 
-		private void CloseStreams(List<Stream> lStreams)
+		private void DisposeStreams(List<Stream> lStreams)
 		{
 			if(lStreams == null) { Debug.Assert(false); return; }
 
-			// Typically, closing a stream also closes its base
+			// Typically, disposing a stream also disposes its base
 			// stream; however, there may be streams that do not
 			// do this (e.g. some cipher plugin), thus for safety
-			// we close all streams manually, from the innermost
+			// we dispose all streams manually, from the innermost
 			// to the outermost
 
 			for(int i = lStreams.Count - 1; i >= 0; --i)
@@ -506,7 +506,7 @@ namespace KeePassLib.Serialization
 				Debug.Assert((lStreams.IndexOf(lStreams[i]) == i) &&
 					(lStreams.LastIndexOf(lStreams[i]) == i));
 
-				try { lStreams[i].Close(); }
+				try { lStreams[i].Dispose(); }
 				catch(Exception) { Debug.Assert(false); }
 			}
 

@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -76,9 +76,10 @@ namespace KeePassLib.Utility
 		{
 			if(pb == null) throw new ArgumentNullException("pb");
 
-			MemoryStream ms = new MemoryStream(pb, false);
-			try { return Image.FromStream(ms); }
-			finally { ms.Close(); }
+			using(MemoryStream ms = new MemoryStream(pb, false))
+			{
+				return Image.FromStream(ms);
+			}
 		}
 #else
 		public static Image LoadImage(byte[] pb)
@@ -98,9 +99,10 @@ namespace KeePassLib.Utility
 			catch(Exception) { Debug.Assert(false); }
 #endif
 
-			MemoryStream ms = new MemoryStream(pb, false);
-			try { return LoadImagePriv(ms); }
-			finally { ms.Close(); }
+			using(MemoryStream ms = new MemoryStream(pb, false))
+			{
+				return LoadImagePriv(ms);
+			}
 		}
 
 		private static Image LoadImagePriv(Stream s)

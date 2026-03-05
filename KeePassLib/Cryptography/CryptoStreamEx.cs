@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ using System.Text;
 
 #if !KeePassUAP
 using System.Security.Cryptography;
+
+using KeePassLib.Utility;
 
 namespace KeePassLib.Cryptography
 {
@@ -56,8 +58,7 @@ namespace KeePassLib.Cryptography
 				try { if(m_t != null) { m_t.Dispose(); m_t = null; } }
 				catch(Exception) { Debug.Assert(false); }
 
-				// In .NET 2.0, SymmetricAlgorithm.Dispose() is not public
-				try { if(m_a != null) { m_a.Clear(); m_a = null; } }
+				try { if(m_a != null) { MemUtil.DisposeIfPossible(m_a); m_a = null; } }
 				catch(Exception) { Debug.Assert(false); }
 			}
 		}

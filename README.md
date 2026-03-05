@@ -1,8 +1,8 @@
 # KeePassNetStandard
 
-A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.57) to .Net Standard.
+A port of the KeePassLib code of [KeePass](https://keepass.info) (v2.61) to .Net Standard.
 
-Tags for previous versions of the port: v2.47, v2.48, v2.48.1, v2.49
+Tags for previous versions of the port: v2.57, v2.47, v2.48, v2.48.1, v2.49
 
 #### Table of contents
 [Why?](#h01)<br>
@@ -56,6 +56,8 @@ static void Main()
 See the QuickTest project in the solution for more info.
 
 Otherwise, the functionality of KeePassLib is available.
+
+Also the SampleDumpDatabase project shows how to dump a KeepPass database into a Word file.
 
 ## How it was ported, what's missing?
 <a name="h04" />

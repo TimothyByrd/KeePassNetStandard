@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -171,15 +171,8 @@ namespace KeePassLib.Keys
 				pbKey = pbRandom;
 			else
 			{
-				int cbAdd = pbAdditionalEntropy.Length;
-				int cbRnd = pbRandom.Length;
-
-				byte[] pbCmp = new byte[cbAdd + cbRnd];
-				Array.Copy(pbAdditionalEntropy, 0, pbCmp, 0, cbAdd);
-				Array.Copy(pbRandom, 0, pbCmp, cbAdd, cbRnd);
-
+				byte[] pbCmp = MemUtil.Concat(pbAdditionalEntropy, pbRandom);
 				pbKey = CryptoUtil.HashSha256(pbCmp);
-
 				MemUtil.ZeroByteArray(pbCmp);
 			}
 

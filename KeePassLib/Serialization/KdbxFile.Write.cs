@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ namespace KeePassLib.Serialization
 		/// entries to write. If <c>null</c>, the complete database will
 		/// be written.</param>
 		/// <param name="fmt">Format of the file to create.</param>
-		/// <param name="slLogger">Logger that recieves status information.</param>
+		/// <param name="slLogger">Logger that receives status information.</param>
 		public void Save(Stream sSaveTo, PwGroup pgDataSource, KdbxFormat fmt,
 			IStatusLogger slLogger)
 		{
@@ -219,7 +219,7 @@ namespace KeePassLib.Serialization
 		{
 			if(m_xmlWriter != null) { m_xmlWriter.Close(); m_xmlWriter = null; }
 
-			CloseStreams(lStreams);
+			DisposeStreams(lStreams);
 
 			Debug.Assert(lStreams.Contains(sHashing)); // sHashing must be closed
 			m_pbHashOfFileOnDisk = sHashing.Hash;
@@ -492,7 +492,7 @@ namespace KeePassLib.Serialization
 			WriteObject(ElemNotes, pg.Notes, true);
 			WriteObject(ElemIcon, (int)pg.IconId);
 			
-			if(!pg.CustomIconUuid.Equals(PwUuid.Zero))
+			if(!pg.CustomIconUuid.IsZero)
 				WriteObject(ElemCustomIconID, pg.CustomIconUuid);
 			
 			WriteList(ElemTimes, pg);
@@ -504,7 +504,7 @@ namespace KeePassLib.Serialization
 
 			if(m_uFileVersion >= FileVersion32_4_1)
 			{
-				if(!pg.PreviousParentGroup.Equals(PwUuid.Zero))
+				if(!pg.PreviousParentGroup.IsZero)
 					WriteObject(ElemPreviousParentGroup, pg.PreviousParentGroup);
 
 				List<string> lTags = pg.Tags;
@@ -530,7 +530,7 @@ namespace KeePassLib.Serialization
 			WriteObject(ElemUuid, pe.Uuid);
 			WriteObject(ElemIcon, (int)pe.IconId);
 
-			if(!pe.CustomIconUuid.Equals(PwUuid.Zero))
+			if(!pe.CustomIconUuid.IsZero)
 				WriteObject(ElemCustomIconID, pe.CustomIconUuid);
 
 			WriteObject(ElemFgColor, StrUtil.ColorToUnnamedHtml(pe.ForegroundColor, true), false);
@@ -542,8 +542,7 @@ namespace KeePassLib.Serialization
 
 			WriteObject(ElemTags, StrUtil.TagsToString(pe.Tags, false), true);
 
-			if((m_uFileVersion >= FileVersion32_4_1) &&
-				!pe.PreviousParentGroup.Equals(PwUuid.Zero))
+			if((m_uFileVersion >= FileVersion32_4_1) && !pe.PreviousParentGroup.IsZero)
 				WriteObject(ElemPreviousParentGroup, pe.PreviousParentGroup);
 
 			WriteList(ElemTimes, pe);

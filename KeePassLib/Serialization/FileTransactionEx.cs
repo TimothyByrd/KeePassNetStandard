@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -195,9 +195,12 @@ namespace KeePassLib.Serialization
 		{
 			if(g_bExtraSafe)
 			{
-				if(!IOConnection.FileExists(m_iocTemp))
-					throw new FileNotFoundException(m_iocTemp.Path +
-						MessageService.NewLine + KLRes.FileSaveFailed);
+				try
+				{
+					if(!IOConnection.FileExists(m_iocTemp, true))
+						throw new FileNotFoundException(KLRes.FileSaveFailed);
+				}
+				catch(Exception ex) { throw new ExtendedException(m_iocTemp.Path, ex); }
 			}
 
 			bool bMadeUnhidden = UrlUtil.UnhideFile(m_iocBase.Path);
@@ -215,7 +218,10 @@ namespace KeePassLib.Serialization
 			DateTime? otCreation = null;
 			SimpleStat sStat = null;
 
-			bool bBaseExists = IOConnection.FileExists(m_iocBase);
+			bool bBaseExists;
+			try { bBaseExists = IOConnection.FileExists(m_iocBase, true); }
+			catch(Exception ex) { throw new ExtendedException(m_iocBase.Path, ex); }
+
 			if(bBaseExists && m_iocBase.IsLocalFile())
 			{
 				// FileAttributes faBase = FileAttributes.Normal;
@@ -381,8 +387,7 @@ namespace KeePassLib.Serialization
 
 		private bool TxfMoveWithTx()
 		{
-			IntPtr hTx = new IntPtr((int)NativeMethods.INVALID_HANDLE_VALUE);
-			Debug.Assert(hTx.ToInt64() == NativeMethods.INVALID_HANDLE_VALUE);
+			IntPtr hTx = NativeMethods.INVALID_HANDLE_VALUE;
 			try
 			{
 				string strTx = PwDefs.ShortProductName + " TxF - " +
@@ -393,7 +398,7 @@ namespace KeePassLib.Serialization
 
 				hTx = NativeMethods.CreateTransaction(IntPtr.Zero,
 					IntPtr.Zero, 0, 0, 0, 0, strTx);
-				if(hTx.ToInt64() == NativeMethods.INVALID_HANDLE_VALUE)
+				if(hTx == NativeMethods.INVALID_HANDLE_VALUE)
 				{
 					Debug.Assert(false, (new Win32Exception()).Message);
 					return false;
@@ -419,7 +424,7 @@ namespace KeePassLib.Serialization
 			catch(Exception) { Debug.Assert(false); }
 			finally
 			{
-				if(hTx.ToInt64() != NativeMethods.INVALID_HANDLE_VALUE)
+				if(hTx != NativeMethods.INVALID_HANDLE_VALUE)
 				{
 					try { if(!NativeMethods.CloseHandle(hTx)) { Debug.Assert(false); } }
 					catch(Exception) { Debug.Assert(false); }
@@ -476,30 +481,30 @@ namespace KeePassLib.Serialization
 				if(fMatchEnv("OneDriveCommercial", string.Empty)) return true;
 				if(fMatchEnv("OneDriveConsumer", string.Empty)) return true;
 
-				using(RegistryKey kAccs = Registry.CurrentUser.OpenSubKey(
-					"Software\\Microsoft\\OneDrive\\Accounts", false))
+				using(RegistryKey rkAccs = Registry.CurrentUser.OpenSubKey(
+					"Software\\Microsoft\\OneDrive\\Accounts"))
 				{
-					string[] vAccs = (((kAccs != null) ? kAccs.GetSubKeyNames() :
+					string[] vAccs = (((rkAccs != null) ? rkAccs.GetSubKeyNames() :
 						null) ?? MemUtil.EmptyArray<string>());
 
 					foreach(string strAcc in vAccs)
 					{
 						if(string.IsNullOrEmpty(strAcc)) { Debug.Assert(false); continue; }
 
-						using(RegistryKey kTenants = kAccs.OpenSubKey(
-							strAcc + "\\Tenants", false))
+						using(RegistryKey rkTenants = rkAccs.OpenSubKey(
+							strAcc + "\\Tenants"))
 						{
-							string[] vTenants = (((kTenants != null) ?
-								kTenants.GetSubKeyNames() : null) ?? MemUtil.EmptyArray<string>());
+							string[] vTenants = (((rkTenants != null) ?
+								rkTenants.GetSubKeyNames() : null) ?? MemUtil.EmptyArray<string>());
 
 							foreach(string strT in vTenants)
 							{
 								if(string.IsNullOrEmpty(strT)) { Debug.Assert(false); continue; }
 
-								using(RegistryKey kT = kTenants.OpenSubKey(strT, false))
+								using(RegistryKey rkT = rkTenants.OpenSubKey(strT))
 								{
-									string[] vPaths = (((kT != null) ?
-										kT.GetValueNames() : null) ?? MemUtil.EmptyArray<string>());
+									string[] vPaths = (((rkT != null) ?
+										rkT.GetValueNames() : null) ?? MemUtil.EmptyArray<string>());
 
 									foreach(string strPath in vPaths)
 									{

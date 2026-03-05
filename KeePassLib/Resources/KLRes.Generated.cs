@@ -51,11 +51,13 @@ namespace KeePassLib.Resources
 			m_strFileUnknownCompression = TryGetEx(dictNew, "FileUnknownCompression", m_strFileUnknownCompression);
 			m_strFileVersionUnsupported = TryGetEx(dictNew, "FileVersionUnsupported", m_strFileVersionUnsupported);
 			m_strFinalKeyCreationFailed = TryGetEx(dictNew, "FinalKeyCreationFailed", m_strFinalKeyCreationFailed);
+			m_strFollowRedirects = TryGetEx(dictNew, "FollowRedirects", m_strFollowRedirects);
 			m_strFrameworkNotImplExcp = TryGetEx(dictNew, "FrameworkNotImplExcp", m_strFrameworkNotImplExcp);
 			m_strGeneral = TryGetEx(dictNew, "General", m_strGeneral);
 			m_strGroupLower = TryGetEx(dictNew, "GroupLower", m_strGroupLower);
 			m_strInvalidCompositeKey = TryGetEx(dictNew, "InvalidCompositeKey", m_strInvalidCompositeKey);
 			m_strInvalidCompositeKeyHint = TryGetEx(dictNew, "InvalidCompositeKeyHint", m_strInvalidCompositeKeyHint);
+			m_strInvalidCompositeKeyOrCorrupted = TryGetEx(dictNew, "InvalidCompositeKeyOrCorrupted", m_strInvalidCompositeKeyOrCorrupted);
 			m_strInvalidDataWhileDecoding = TryGetEx(dictNew, "InvalidDataWhileDecoding", m_strInvalidDataWhileDecoding);
 			m_strKeePass1xHint = TryGetEx(dictNew, "KeePass1xHint", m_strKeePass1xHint);
 			m_strKeyBits = TryGetEx(dictNew, "KeyBits", m_strKeyBits);
@@ -74,7 +76,6 @@ namespace KeePassLib.Resources
 			m_strUnknownError = TryGetEx(dictNew, "UnknownError", m_strUnknownError);
 			m_strUnknownHeaderId = TryGetEx(dictNew, "UnknownHeaderId", m_strUnknownHeaderId);
 			m_strUnknownKdf = TryGetEx(dictNew, "UnknownKdf", m_strUnknownKdf);
-			m_strUserAccountKeyError = TryGetEx(dictNew, "UserAccountKeyError", m_strUserAccountKeyError);
 			m_strUserAgent = TryGetEx(dictNew, "UserAgent", m_strUserAgent);
 		}
 
@@ -104,11 +105,13 @@ namespace KeePassLib.Resources
 			"FileUnknownCompression",
 			"FileVersionUnsupported",
 			"FinalKeyCreationFailed",
+			"FollowRedirects",
 			"FrameworkNotImplExcp",
 			"General",
 			"GroupLower",
 			"InvalidCompositeKey",
 			"InvalidCompositeKeyHint",
+			"InvalidCompositeKeyOrCorrupted",
 			"InvalidDataWhileDecoding",
 			"KeePass1xHint",
 			"KeyBits",
@@ -127,7 +130,6 @@ namespace KeePassLib.Resources
 			"UnknownError",
 			"UnknownHeaderId",
 			"UnknownKdf",
-			"UserAccountKeyError",
 			"UserAgent"
 		};
 
@@ -411,6 +413,17 @@ namespace KeePassLib.Resources
 			get { return m_strFinalKeyCreationFailed; }
 		}
 
+		private static string m_strFollowRedirects =
+			@"Follow redirects";
+		/// <summary>
+		/// Look up a localized string similar to
+		/// 'Follow redirects'.
+		/// </summary>
+		public static string FollowRedirects
+		{
+			get { return m_strFollowRedirects; }
+		}
+
 		private static string m_strFrameworkNotImplExcp =
 			@"The .NET Framework/runtime under which KeePass is currently running does not support this operation.";
 		/// <summary>
@@ -464,6 +477,17 @@ namespace KeePassLib.Resources
 		public static string InvalidCompositeKeyHint
 		{
 			get { return m_strInvalidCompositeKeyHint; }
+		}
+
+		private static string m_strInvalidCompositeKeyOrCorrupted =
+			@"The master key is invalid or the file is corrupted.";
+		/// <summary>
+		/// Look up a localized string similar to
+		/// 'The master key is invalid or the file is corrupted.'.
+		/// </summary>
+		public static string InvalidCompositeKeyOrCorrupted
+		{
+			get { return m_strInvalidCompositeKeyOrCorrupted; }
 		}
 
 		private static string m_strInvalidDataWhileDecoding =
@@ -662,17 +686,6 @@ namespace KeePassLib.Resources
 		public static string UnknownKdf
 		{
 			get { return m_strUnknownKdf; }
-		}
-
-		private static string m_strUserAccountKeyError =
-			@"The operating system did not grant KeePass read/write access to the user profile folder, where the protected user key is stored.";
-		/// <summary>
-		/// Look up a localized string similar to
-		/// 'The operating system did not grant KeePass read/write access to the user profile folder, where the protected user key is stored.'.
-		/// </summary>
-		public static string UserAccountKeyError
-		{
-			get { return m_strUserAccountKeyError; }
 		}
 
 		private static string m_strUserAgent =

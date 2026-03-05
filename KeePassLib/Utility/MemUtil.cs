@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ using KeePassLibSD;
 #else
 using System.IO.Compression;
 #endif
+
+using KeePassLib.Delegates;
 
 namespace KeePassLib.Utility
 {
@@ -133,6 +135,7 @@ namespace KeePassLib.Utility
 			return sb.ToString();
 		}
 
+		// Cf. StrUtil.IsBase32String.
 		/// <summary>
 		/// Decode Base32 strings according to RFC 4648.
 		/// </summary>
@@ -472,6 +475,26 @@ namespace KeePassLib.Utility
 			return ((u >> nBits) | (u << (64 - nBits)));
 		}
 
+		private static void AddVersionComponent(ref ulong uVersion, int iValue)
+		{
+			if(iValue < 0) iValue = 0;
+			else if(iValue > 0xFFFF) { Debug.Assert(false); iValue = 0xFFFF; }
+
+			uVersion = (uVersion << 16) | (uint)iValue;
+		}
+
+		internal static ulong VersionToUInt64(Version v)
+		{
+			if(v == null) { Debug.Assert(false); return 0; }
+
+			ulong u = 0;
+			AddVersionComponent(ref u, v.Major);
+			AddVersionComponent(ref u, v.Minor);
+			AddVersionComponent(ref u, v.Build);
+			AddVersionComponent(ref u, v.Revision);
+			return u;
+		}
+
 		public static bool ArraysEqual(byte[] x, byte[] y)
 		{
 			// Return false if one of them is null (not comparable)!
@@ -598,7 +621,7 @@ namespace KeePassLib.Utility
 			if(sSource == null) throw new ArgumentNullException("sSource");
 			if(sTarget == null) throw new ArgumentNullException("sTarget");
 
-			const int cbBuf = 4096;
+			const int cbBuf = 16 * 1024;
 			byte[] pbBuf = new byte[cbBuf];
 
 			while(true)
@@ -616,14 +639,11 @@ namespace KeePassLib.Utility
 		{
 			if(s == null) throw new ArgumentNullException("s");
 
-			byte[] pb;
 			using(MemoryStream ms = new MemoryStream())
 			{
-				MemUtil.CopyStream(s, ms);
-				pb = ms.ToArray();
+				CopyStream(s, ms);
+				return ms.ToArray();
 			}
-
-			return pb;
 		}
 
 		public static byte[] Read(Stream s, int nCount)
@@ -652,6 +672,17 @@ namespace KeePassLib.Utility
 			return pb;
 		}
 
+		internal static string ReadString(Stream s, Encoding enc)
+		{
+			if(s == null) throw new ArgumentNullException("s");
+			if(enc == null) throw new ArgumentNullException("enc");
+
+			using(StreamReader sr = new StreamReader(s, enc, true))
+			{
+				return sr.ReadToEnd();
+			}
+		}
+
 		public static void Write(Stream s, byte[] pbData)
 		{
 			if(s == null) { Debug.Assert(false); return; }
@@ -666,7 +697,6 @@ namespace KeePassLib.Utility
 			if(pbData == null) throw new ArgumentNullException("pbData");
 			if(pbData.Length == 0) return pbData;
 
-			byte[] pbCompressed;
 			using(MemoryStream msSource = new MemoryStream(pbData, false))
 			{
 				using(MemoryStream msCompressed = new MemoryStream())
@@ -674,14 +704,12 @@ namespace KeePassLib.Utility
 					using(GZipStream gz = new GZipStream(msCompressed,
 						CompressionMode.Compress))
 					{
-						MemUtil.CopyStream(msSource, gz);
+						CopyStream(msSource, gz);
 					}
 
-					pbCompressed = msCompressed.ToArray();
+					return msCompressed.ToArray();
 				}
 			}
-
-			return pbCompressed;
 		}
 
 		public static byte[] Decompress(byte[] pbCompressed)
@@ -689,7 +717,6 @@ namespace KeePassLib.Utility
 			if(pbCompressed == null) throw new ArgumentNullException("pbCompressed");
 			if(pbCompressed.Length == 0) return pbCompressed;
 
-			byte[] pbData;
 			using(MemoryStream msData = new MemoryStream())
 			{
 				using(MemoryStream msCompressed = new MemoryStream(pbCompressed, false))
@@ -697,14 +724,40 @@ namespace KeePassLib.Utility
 					using(GZipStream gz = new GZipStream(msCompressed,
 						CompressionMode.Decompress))
 					{
-						MemUtil.CopyStream(gz, msData);
+						CopyStream(gz, msData);
 					}
 				}
 
-				pbData = msData.ToArray();
+				return msData.ToArray();
 			}
+		}
 
-			return pbData;
+		internal static T[] Concat<T>(T[] v1, T[] v2)
+		{
+			if(v1 == null) { Debug.Assert(false); v1 = EmptyArray<T>(); }
+			if(v2 == null) { Debug.Assert(false); v2 = EmptyArray<T>(); }
+
+			int c1 = v1.Length, c2 = v2.Length;
+
+			T[] v = new T[c1 + c2]; // Overflow => negative => exception; no data copied
+			Array.Copy(v1, 0, v, 0, c1);
+			Array.Copy(v2, 0, v, c1, c2);
+			return v;
+		}
+
+		internal static T[] Concat<T>(T[] v1, T[] v2, T[] v3)
+		{
+			if(v1 == null) { Debug.Assert(false); v1 = EmptyArray<T>(); }
+			if(v2 == null) { Debug.Assert(false); v2 = EmptyArray<T>(); }
+			if(v3 == null) { Debug.Assert(false); v3 = EmptyArray<T>(); }
+
+			int c1 = v1.Length, c2 = v2.Length, c3 = v3.Length;
+
+			T[] v = new T[checked(c1 + c2 + c3)]; // Overflow => exception; no data copied
+			Array.Copy(v1, 0, v, 0, c1);
+			Array.Copy(v2, 0, v, c1, c2);
+			Array.Copy(v3, 0, v, c1 + c2, c3);
+			return v;
 		}
 
 		public static int IndexOf<T>(T[] vHaystack, T[] vNeedle)
@@ -752,23 +805,17 @@ namespace KeePassLib.Utility
 			if(a == null) throw new ArgumentNullException("a");
 			if(b == null) throw new ArgumentNullException("b");
 
-			Dictionary<T, bool> d = ((cmp != null) ?
-				(new Dictionary<T, bool>(cmp)) : (new Dictionary<T, bool>()));
+			HashSet<T> hs = ((cmp != null) ? (new HashSet<T>(cmp)) :
+				(new HashSet<T>()));
 
 			foreach(T ta in a)
 			{
-				if(d.ContainsKey(ta)) continue; // Prevent duplicates
-
-				d[ta] = true;
-				yield return ta;
+				if(hs.Add(ta)) yield return ta; // Prevent duplicates
 			}
 
 			foreach(T tb in b)
 			{
-				if(d.ContainsKey(tb)) continue; // Prevent duplicates
-
-				d[tb] = true;
-				yield return tb;
+				if(hs.Add(tb)) yield return tb; // Prevent duplicates
 			}
 
 			yield break;
@@ -780,15 +827,12 @@ namespace KeePassLib.Utility
 			if(a == null) throw new ArgumentNullException("a");
 			if(b == null) throw new ArgumentNullException("b");
 
-			Dictionary<T, bool> d = ((cmp != null) ?
-				(new Dictionary<T, bool>(cmp)) : (new Dictionary<T, bool>()));
-
-			foreach(T tb in b) { d[tb] = true; }
+			HashSet<T> hs = ((cmp != null) ? (new HashSet<T>(b, cmp)) :
+				(new HashSet<T>(b)));
 
 			foreach(T ta in a)
 			{
-				if(d.Remove(ta)) // Prevent duplicates
-					yield return ta;
+				if(hs.Remove(ta)) yield return ta; // Prevent duplicates
 			}
 
 			yield break;
@@ -800,17 +844,49 @@ namespace KeePassLib.Utility
 			if(a == null) throw new ArgumentNullException("a");
 			if(b == null) throw new ArgumentNullException("b");
 
-			Dictionary<T, bool> d = ((cmp != null) ?
-				(new Dictionary<T, bool>(cmp)) : (new Dictionary<T, bool>()));
-
-			foreach(T tb in b) { d[tb] = true; }
+			HashSet<T> hs = ((cmp != null) ? (new HashSet<T>(b, cmp)) :
+				(new HashSet<T>(b)));
 
 			foreach(T ta in a)
 			{
-				if(d.ContainsKey(ta)) continue;
+				if(hs.Add(ta)) yield return ta; // Prevent duplicates
+			}
 
-				d[ta] = true; // Prevent duplicates
-				yield return ta;
+			yield break;
+		}
+
+		internal static IEnumerable<T> Distinct<T, TKey>(IEnumerable<T> s,
+			GFunc<T, TKey> fGetKey, bool bPreferLast)
+		{
+			if(s == null) throw new ArgumentNullException("s");
+			if(fGetKey == null) throw new ArgumentNullException("fGetKey");
+
+			HashSet<TKey> hs = new HashSet<TKey>();
+
+			if(bPreferLast)
+			{
+				List<T> l = new List<T>(s);
+				int n = l.Count;
+				bool[] v = new bool[n];
+
+				for(int i = n - 1; i >= 0; --i)
+				{
+					TKey k = fGetKey(l[i]);
+					if(hs.Add(k)) v[i] = true;
+				}
+
+				for(int i = 0; i < n; ++i)
+				{
+					if(v[i]) yield return l[i];
+				}
+			}
+			else
+			{
+				foreach(T t in s)
+				{
+					TKey k = fGetKey(t);
+					if(hs.Add(k)) yield return t;
+				}
 			}
 
 			yield break;
@@ -853,6 +929,13 @@ namespace KeePassLib.Utility
 			return r;
 		}
 
+		/// <summary>
+		/// Safely dispose an object if possible. Examples:
+		/// <c>RNGCryptoServiceProvider</c> does not implement <c>IDisposable</c>
+		/// in .NET 3.5, but in later .NET versions it does;
+		/// the <c>Dispose</c> method of <c>SymmetricAlgorithm</c> in .NET 3.5
+		/// is not public; etc.
+		/// </summary>
 		[MethodImpl(MioNoOptimize)]
 		internal static void DisposeIfPossible(object o)
 		{
@@ -860,6 +943,33 @@ namespace KeePassLib.Utility
 
 			IDisposable d = (o as IDisposable);
 			if(d != null) d.Dispose();
+		}
+
+		internal static object GetEnumValue(Type tEnum, string strName)
+		{
+			if(tEnum == null) { Debug.Assert(false); return null; }
+			if(!tEnum.IsEnum) { Debug.Assert(false); return null; }
+			if(string.IsNullOrEmpty(strName)) { Debug.Assert(false); return null; }
+
+			return ((Array.IndexOf<string>(Enum.GetNames(tEnum), strName) >= 0) ?
+				Enum.Parse(tEnum, strName) : null);
+		}
+
+		internal static T ConvertObject<T>(object o, T tDefault)
+		{
+			if(o == null) return tDefault;
+
+			try
+			{
+				if(o is T) return (T)o;
+				return (T)Convert.ChangeType(o, typeof(T));
+			}
+			catch(Exception) { Debug.Assert(false); }
+
+			try { return (T)o; }
+			catch(Exception) { Debug.Assert(false); }
+
+			return tDefault;
 		}
 
 		internal static T BytesToStruct<T>(byte[] pb, int iOffset)

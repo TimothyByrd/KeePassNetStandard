@@ -1,6 +1,6 @@
 ﻿/*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -36,6 +37,51 @@ namespace KeePassLib
 {
 	public sealed partial class PwGroup
 	{
+		private sealed class SrsmContext
+		{
+			public SearchParameters SearchParameters { get; private set; }
+			public CompareInfo CompareInfo { get; private set; }
+			public CompareOptions CompareOptions { get; private set; }
+			public Regex Regex { get; private set; }
+
+			public SrsmContext(SearchParameters sp)
+			{
+				if(sp == null) { Debug.Assert(false); throw new ArgumentNullException("sp"); }
+
+				this.SearchParameters = sp;
+
+				StringComparison sc = sp.ComparisonMode;
+				bool bCurrent = ((sc == StringComparison.CurrentCulture) ||
+					(sc == StringComparison.CurrentCultureIgnoreCase));
+				bool bOrdinal = ((sc == StringComparison.Ordinal) ||
+					(sc == StringComparison.OrdinalIgnoreCase));
+				bool bIgnoreCase = StrUtil.GetIgnoreCase(sc);
+
+				this.CompareInfo = (bCurrent ? CultureInfo.CurrentCulture :
+					CultureInfo.InvariantCulture).CompareInfo;
+
+				CompareOptions co = CompareOptions.None;
+				if(bOrdinal)
+					co |= (bIgnoreCase ? CompareOptions.OrdinalIgnoreCase :
+						CompareOptions.Ordinal);
+				else
+				{
+					if(bIgnoreCase) co |= CompareOptions.IgnoreCase;
+					if(!sp.MatchDiacritics) co |= CompareOptions.IgnoreNonSpace;
+				}
+				this.CompareOptions = co;
+
+				if(sp.SearchMode == PwSearchMode.Regular)
+				{
+					RegexOptions ro = RegexOptions.None;
+					if(!bCurrent) ro |= RegexOptions.CultureInvariant;
+					if(bIgnoreCase) ro |= RegexOptions.IgnoreCase;
+
+					this.Regex = new Regex(sp.SearchString, ro);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Search this group and all subgroups for entries.
 		/// </summary>
@@ -156,28 +202,13 @@ namespace KeePassLib
 		{
 			lOut = new List<PwEntry>();
 
-			string strTerm = sp.SearchString;
-			if(string.IsNullOrEmpty(strTerm))
+			if(string.IsNullOrEmpty(sp.SearchString))
 			{
 				lOut.AddRange(lIn);
 				return true;
 			}
 
-			Regex rx = null;
-			if(sp.SearchMode == PwSearchMode.Regular)
-			{
-				RegexOptions ro = RegexOptions.None;
-				if((sp.ComparisonMode == StringComparison.CurrentCultureIgnoreCase) ||
-#if !KeePassUAP
-					(sp.ComparisonMode == StringComparison.InvariantCultureIgnoreCase) ||
-#endif
-					(sp.ComparisonMode == StringComparison.OrdinalIgnoreCase))
-				{
-					ro |= RegexOptions.IgnoreCase;
-				}
-
-				rx = new Regex(strTerm, ro);
-			}
+			SrsmContext ctx = new SrsmContext(sp);
 
 			foreach(PwEntry pe in lIn)
 			{
@@ -188,15 +219,17 @@ namespace KeePassLib
 					++uStEntriesDone;
 				}
 
-				if(SrsmIsMatch(sp, rx, pe)) lOut.Add(pe);
+				if(SrsmIsMatch(ctx, pe)) lOut.Add(pe);
 			}
 
 			return true;
 		}
 
-		private static bool SrsmIsMatch(SearchParameters sp, Regex rx, PwEntry pe)
+		private static bool SrsmIsMatch(SrsmContext ctx, PwEntry pe)
 		{
-			if(sp == null) { Debug.Assert(false); return false; }
+			if(pe == null) { Debug.Assert(false); return false; }
+
+			SearchParameters sp = ctx.SearchParameters;
 
 			foreach(KeyValuePair<string, ProtectedString> kvp in pe.Strings)
 			{
@@ -206,33 +239,33 @@ namespace KeePassLib
 				switch(strKey)
 				{
 					case PwDefs.TitleField:
-						if(sp.SearchInTitles && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInTitles && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 					case PwDefs.UserNameField:
-						if(sp.SearchInUserNames && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInUserNames && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 					case PwDefs.PasswordField:
-						if(sp.SearchInPasswords && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInPasswords && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 					case PwDefs.UrlField:
-						if(sp.SearchInUrls && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInUrls && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 					case PwDefs.NotesField:
-						if(sp.SearchInNotes && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInNotes && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 					default:
 						Debug.Assert(!PwDefs.IsStandardField(strKey));
-						if(sp.SearchInOther && SrsmIsMatch(sp, rx, pe, ps.ReadString()))
+						if(sp.SearchInOther && SrsmIsMatch(ctx, pe, ps.ReadString()))
 							return true;
 						break;
 				}
 
-				if(sp.SearchInStringNames && SrsmIsMatch(sp, rx, pe, strKey))
+				if(sp.SearchInStringNames && SrsmIsMatch(ctx, pe, strKey))
 					return true;
 			}
 
@@ -240,42 +273,46 @@ namespace KeePassLib
 			{
 				foreach(string strTag in pe.GetTagsInherited())
 				{
-					if(SrsmIsMatch(sp, rx, pe, strTag)) return true;
+					if(SrsmIsMatch(ctx, pe, strTag)) return true;
 				}
 			}
 
-			if(sp.SearchInUuids && SrsmIsMatch(sp, rx, pe, pe.Uuid.ToHexString()))
+			if(sp.SearchInUuids && SrsmIsMatch(ctx, pe, pe.Uuid.ToHexString()))
 				return true;
 
 			if(sp.SearchInGroupPaths && (pe.ParentGroup != null) &&
-				SrsmIsMatch(sp, rx, pe, pe.ParentGroup.GetFullPath("\n", true)))
+				SrsmIsMatch(ctx, pe, pe.ParentGroup.GetFullPath("\n", true)))
 				return true;
 
 			if(sp.SearchInGroupNames && (pe.ParentGroup != null) &&
-				SrsmIsMatch(sp, rx, pe, pe.ParentGroup.Name))
+				SrsmIsMatch(ctx, pe, pe.ParentGroup.Name))
 				return true;
 
 			if(sp.SearchInHistory)
 			{
-				foreach(PwEntry peHist in pe.History)
+				foreach(PwEntry peH in pe.History)
 				{
-					if(SrsmIsMatch(sp, rx, peHist)) return true;
+					if(SrsmIsMatch(ctx, peH)) return true;
 				}
 			}
 
 			return false;
 		}
 
-		private static bool SrsmIsMatch(SearchParameters sp, Regex rx, PwEntry pe,
-			string strData)
+		private static bool SrsmIsMatch(SrsmContext ctx, PwEntry pe, string strData)
 		{
 			if(strData == null) { Debug.Assert(false); strData = string.Empty; }
+
+			SearchParameters sp = ctx.SearchParameters;
 
 			StrPwEntryDelegate f = sp.DataTransformationFn;
 			if(f != null) strData = f(strData, pe);
 
+			Regex rx = ctx.Regex;
 			if(rx != null) return rx.IsMatch(strData);
-			return (strData.IndexOf(sp.SearchString, sp.ComparisonMode) >= 0);
+
+			return (ctx.CompareInfo.IndexOf(strData, sp.SearchString,
+				ctx.CompareOptions) >= 0);
 		}
 
 		private void SrxpSearch(SearchParameters sp, PwObjectList<PwEntry> lResults,
@@ -291,7 +328,7 @@ namespace KeePassLib
 
 			pd.RootGroup = SrxpFilterCloneSelf(sp);
 
-			Dictionary<PwUuid, bool> dResults = new Dictionary<PwUuid, bool>();
+			HashSet<PwUuid> hsResults = new HashSet<PwUuid>();
 
 			XmlDocument xd;
 			XPathNodeIterator xpIt = XmlUtilEx.FindNodes(pd, sp.SearchString, sl, out xd);
@@ -312,7 +349,7 @@ namespace KeePassLib
 					if((nt == XPathNodeType.Element) &&
 						(xpNav.Name == KdbxFile.ElemEntry))
 					{
-						SrxpAddResult(dResults, xpNav);
+						SrxpAddResult(hsResults, xpNav);
 						break;
 					}
 
@@ -322,11 +359,11 @@ namespace KeePassLib
 
 			EntryHandler eh = delegate(PwEntry pe)
 			{
-				if(dResults.ContainsKey(pe.Uuid)) lResults.Add(pe);
+				if(hsResults.Contains(pe.Uuid)) lResults.Add(pe);
 				return true;
 			};
 			TraverseTree(TraversalMethod.PreOrder, null, eh);
-			Debug.Assert(lResults.UCount == (uint)dResults.Count);
+			Debug.Assert(lResults.UCount == (uint)hsResults.Count);
 		}
 
 		private static void SrxpClearString(bool bIf, PwEntry pe, string strKey)
@@ -394,7 +431,7 @@ namespace KeePassLib
 			return pgNew;
 		}
 
-		private static void SrxpAddResult(Dictionary<PwUuid, bool> dResults,
+		private static void SrxpAddResult(HashSet<PwUuid> hsResults,
 			XPathNavigator xpNavEntry)
 		{
 			try
@@ -409,8 +446,7 @@ namespace KeePassLib
 				string strUuid = xpNavEntry.Value;
 				if(string.IsNullOrEmpty(strUuid)) { Debug.Assert(false); return; }
 
-				byte[] pb = Convert.FromBase64String(strUuid);
-				dResults[new PwUuid(pb)] = true;
+				hsResults.Add(new PwUuid(Convert.FromBase64String(strUuid)));
 			}
 			catch(Exception) { Debug.Assert(false); }
 		}

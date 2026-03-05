@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -326,7 +326,11 @@ namespace KeePassLib.Serialization
 				if(hwr != null)
 				{
 					string strUA = p.Get(IocKnownProperties.UserAgent);
-					if(!string.IsNullOrEmpty(strUA)) hwr.UserAgent = strUA;
+					if(string.IsNullOrEmpty(strUA)) strUA = PwDefs.ShortProductName;
+					hwr.UserAgent = strUA;
+
+					bool? obRedir = p.GetBool(IocKnownProperties.FollowRedirects);
+					if(obRedir.HasValue) hwr.AllowAutoRedirect = obRedir.Value;
 				}
 				else { Debug.Assert(false); }
 #endif
@@ -518,24 +522,18 @@ namespace KeePassLib.Serialization
 				// introduced in .NET 4.5 and must not be set when running on
 				// older .NET versions (otherwise an exception is thrown)
 				Type tSpt = typeof(SecurityProtocolType);
-				string[] vSpt = Enum.GetNames(tSpt);
 				bool bSystem = false;
-				foreach(string strSpt in vSpt)
+				foreach(string strSpt in Enum.GetNames(tSpt))
 				{
 					// When running on .NET 4.7 or higher, let the system
 					// choose the supported/enabled protocols;
 					// https://learn.microsoft.com/en-us/dotnet/framework/network-programming/tls
 					// https://learn.microsoft.com/en-us/windows/win32/secauthn/protocols-in-tls-ssl--schannel-ssp-
-					if(strSpt.Equals("SystemDefault", StrUtil.CaseIgnoreCmp))
-					{
-						bSystem = true;
-						break;
-					}
+					if(strSpt == "SystemDefault") { bSystem = true; break; }
 
-					if(strSpt.Equals("Tls11", StrUtil.CaseIgnoreCmp) || // .NET 4.5
-						strSpt.Equals("Tls12", StrUtil.CaseIgnoreCmp) || // .NET 4.5
-						strSpt.Equals("Tls13", StrUtil.CaseIgnoreCmp)) // .NET 4.8
-						spt |= (SecurityProtocolType)Enum.Parse(tSpt, strSpt, true);
+					if((strSpt == "Tls11") || (strSpt == "Tls12") || // Both .NET 4.5
+						(strSpt == "Tls13")) // .NET 4.8 (should imply SystemDefault)
+						spt |= (SecurityProtocolType)Enum.Parse(tSpt, strSpt);
 				}
 
 				if(!bSystem) ServicePointManager.SecurityProtocol = spt;
@@ -674,9 +672,14 @@ namespace KeePassLib.Serialization
 #if !KeePassLibSD
 			if(ioc.Path.StartsWith("ftp://", StrUtil.CaseIgnoreCmp))
 			{
-				bool b = SendCommand(ioc, WebRequestMethods.Ftp.GetDateTimestamp);
-				if(!b && bThrowErrors) throw new InvalidOperationException();
-				return b;
+				try { SendCommand(ioc, WebRequestMethods.Ftp.GetDateTimestamp); }
+				catch(Exception)
+				{
+					if(bThrowErrors) throw;
+					return false;
+				}
+
+				return true;
 			}
 #endif
 
@@ -690,7 +693,7 @@ namespace KeePassLib.Serialization
 
 				// We didn't download the file completely; close may throw
 				// an exception -- that's okay
-				try { s.Close(); }
+				try { s.Dispose(); }
 				catch(Exception) { }
 			}
 			catch(Exception)
@@ -794,31 +797,16 @@ namespace KeePassLib.Serialization
 			}
 #endif
 
-			// using(Stream sIn = IOConnection.OpenRead(iocFrom))
-			// {
-			//	using(Stream sOut = IOConnection.OpenWrite(iocTo))
-			//	{
-			//		MemUtil.CopyStream(sIn, sOut);
-			//		sOut.Close();
-			//	}
-			//
-			//	sIn.Close();
-			// }
+			// CopyData(iocFrom, iocTo);
 			// DeleteFile(iocFrom);
 		}
 
 #if !KeePassLibSD
-		private static bool SendCommand(IOConnectionInfo ioc, string strMethod)
+		private static void SendCommand(IOConnectionInfo ioc, string strMethod)
 		{
-			try
-			{
-				WebRequest req = CreateWebRequest(ioc);
-				req.Method = strMethod;
-				DisposeResponse(req.GetResponse(), true);
-			}
-			catch(Exception) { return false; }
-
-			return true;
+			WebRequest req = CreateWebRequest(ioc);
+			req.Method = strMethod;
+			DisposeResponse(req.GetResponse(), true);
 		}
 #endif
 
@@ -831,7 +819,7 @@ namespace KeePassLib.Serialization
 				if(bGetStream)
 				{
 					Stream s = wr.GetResponseStream();
-					if(s != null) s.Close();
+					if(s != null) s.Dispose();
 				}
 			}
 			catch(Exception) { Debug.Assert(false); }
@@ -840,11 +828,49 @@ namespace KeePassLib.Serialization
 			catch(Exception) { Debug.Assert(false); }
 		}
 
+		/// <summary>
+		/// Copy only the data/content from one file to another (no metadata
+		/// like attributes or ACLs).
+		/// </summary>
+		internal static void CopyData(IOConnectionInfo iocFrom, IOConnectionInfo iocTo)
+		{
+			if(iocFrom == null) throw new ArgumentNullException("iocFrom");
+			if(iocTo == null) throw new ArgumentNullException("iocTo");
+
+			// File.Copy copies attributes
+			// try
+			// {
+			//	if(iocFrom.IsLocalFile() && iocTo.IsLocalFile())
+			//	{
+			//		// Do not try to copy an encrypted file;
+			//		// https://sourceforge.net/p/keepass/discussion/329220/thread/9c9eb989/
+			//		// https://msdn.microsoft.com/en-us/library/windows/desktop/aa363851.aspx
+			//		if((long)(File.GetAttributes(iocFrom.Path) &
+			//			FileAttributes.Encrypted) == 0)
+			//		{
+			//			RaiseIOAccessPreEvent(iocFrom, IOAccessType.Read);
+			//			RaiseIOAccessPreEvent(iocTo, IOAccessType.Write);
+			//			File.Copy(iocFrom.Path, iocTo.Path, true);
+			//			return;
+			//		}
+			//	}
+			// }
+			// catch(Exception) { Debug.Assert(false); }
+
+			using(Stream sFrom = OpenRead(iocFrom))
+			{
+				using(Stream sTo = OpenWrite(iocTo))
+				{
+					MemUtil.CopyStream(sFrom, sTo);
+				}
+			}
+		}
+
 		public static byte[] ReadFile(IOConnectionInfo ioc)
 		{
 			try
 			{
-				using(Stream s = IOConnection.OpenRead(ioc))
+				using(Stream s = OpenRead(ioc))
 				{
 					return MemUtil.Read(s);
 				}

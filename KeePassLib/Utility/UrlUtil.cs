@@ -1,6 +1,6 @@
 /*
   KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2024 Dominik Reichl <dominik.reichl@t-online.de>
+  Copyright (C) 2003-2026 Dominik Reichl <dominik.reichl@t-online.de>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -179,64 +179,6 @@ namespace KeePassLib.Utility
 			if(bUrl) return (strPath + '/');
 			return (strPath + UrlUtil.LocalDirSepChar);
 		}
-
-		/* /// <summary>
-		/// File access mode enumeration. Used by the <c>FileAccessible</c>
-		/// method.
-		/// </summary>
-		public enum FileAccessMode
-		{
-			/// <summary>
-			/// Opening a file in read mode. The specified file must exist.
-			/// </summary>
-			Read = 0,
-
-			/// <summary>
-			/// Opening a file in create mode. If the file exists already, it
-			/// will be overwritten. If it doesn't exist, it will be created.
-			/// The return value is <c>true</c>, if data can be written to the
-			/// file.
-			/// </summary>
-			Create
-		} */
-
-		/* /// <summary>
-		/// Test if a specified path is accessible, either in read or write mode.
-		/// </summary>
-		/// <param name="strFilePath">Path to test.</param>
-		/// <param name="fMode">Requested file access mode.</param>
-		/// <returns>Returns <c>true</c> if the specified path is accessible in
-		/// the requested mode, otherwise the return value is <c>false</c>.</returns>
-		public static bool FileAccessible(string strFilePath, FileAccessMode fMode)
-		{
-			Debug.Assert(strFilePath != null);
-			if(strFilePath == null) throw new ArgumentNullException("strFilePath");
-
-			if(fMode == FileAccessMode.Read)
-			{
-				FileStream fs;
-
-				try { fs = File.OpenRead(strFilePath); }
-				catch(Exception) { return false; }
-				if(fs == null) return false;
-
-				fs.Close();
-				return true;
-			}
-			else if(fMode == FileAccessMode.Create)
-			{
-				FileStream fs;
-
-				try { fs = File.Create(strFilePath); }
-				catch(Exception) { return false; }
-				if(fs == null) return false;
-
-				fs.Close();
-				return true;
-			}
-
-			return false;
-		} */
 
 		internal static int IndexOfSecondEnclQuote(string str)
 		{
@@ -461,8 +403,8 @@ namespace KeePassLib.Utility
 
 				foreach(string strPart in v)
 				{
-					if(strPart.Equals(".")) continue;
-					else if(strPart.Equals(".."))
+					if(strPart == ".") continue;
+					if(strPart == "..")
 					{
 						if(l.Count > 0) l.RemoveAt(l.Count - 1);
 						else { Debug.Assert(false); }
