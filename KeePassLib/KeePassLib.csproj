@@ -2,9 +2,24 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>NetStandard port of KeePassLib</Description>
+    <Description>NetStandard 2.0 port of KeePassLib</Description>
     <!-- <GenerateAssemblyInfo>false</GenerateAssemblyInfo> -->
     <OutDir>..\bin\$(Configuration)</OutDir>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>KeePassNetStandard</Title>
+    <PackageId>KeePassNetStandard.$(AssemblyName)</PackageId>
+    <Version>2.61.0</Version>
+    <Authors>Dominik Reichl, ported by Timothy Byrd</Authors>
+    <Product>KeePassNetStandard</Product>
+    <Copyright>See License.txt in KeePass source code</Copyright>
+    <AssemblyTitle>KeePassNetStandard</AssemblyTitle>
+    <PackageProjectUrl>https://github.com/TimothyByrd/KeePassNetStandard</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/TimothyByrd/KeePassNetStandard.git</RepositoryUrl>
+    <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageOutputPath>..\bin\$(Configuration)\package</PackageOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -27,16 +42,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.3" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.5" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
+	<PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.5" />
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
     <PackageReference Include="System.Security.AccessControl" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

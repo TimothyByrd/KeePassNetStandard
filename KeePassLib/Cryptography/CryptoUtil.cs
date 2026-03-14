@@ -35,13 +35,6 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace KeePassLib.Cryptography
 {
-    #if NETSTANDARD2_0
-    public enum DataProtectionScope
-    {
-        CurrentUser
-    };
-    #endif
-
 	public static class CryptoUtil
 	{
 #if NETSTANDARD2_0
